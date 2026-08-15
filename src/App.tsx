@@ -267,6 +267,10 @@ export function ProposalPage() {
           </a>
           .
         </p>
+        <a className='pixel-button proposal-mailbox-button' href='#/account'>
+          <span aria-hidden='true'>✉</span>
+          OPEN OUR LOVE MAILBOX
+        </a>
       </section>
       {celebrating && (
         <div className='heart-burst' aria-label='Yay!'>

@@ -486,6 +486,19 @@ input:focus-visible {
   text-underline-offset: 3px;
 }
 
+.proposal-mailbox-button {
+  min-height: 44px;
+  margin-top: 14px;
+  padding: 8px 15px;
+  border-width: 3px;
+  gap: 9px;
+  background: #fff9e9;
+  box-shadow: 4px 4px 0 var(--pink-dark);
+  font-size: .9rem;
+}
+
+.proposal-mailbox-button span { font-size: 1.2rem; }
+
 .heart-burst {
   position: fixed;
   inset: 0;
@@ -1411,6 +1424,7 @@ input:focus-visible {
   .no-choice { width: 150px; flex-basis: 150px; }
   .sad-message { margin-inline: -30px; }
   .terms-note { margin-top: 0; font-size: 0.86rem; }
+  .proposal-mailbox-button { margin-top: 11px; font-size: .82rem; }
   .window--left { left: 11vw; }
   .window--right { right: 11vw; }
   .distance-line { width: 61vw; }

@@ -48,6 +48,14 @@ describe('proposal experience', () => {
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
   })
+
+  it('offers a direct mailbox shortcut from the proposal screen', async () => {
+    const user = userEvent.setup()
+    render(<ProposalPage />)
+    await user.click(screen.getByRole('button', { name: /skip intro/i }))
+
+    expect(screen.getByRole('link', { name: /open our love mailbox/i })).toHaveAttribute('href', '#/account')
+  })
 })
 
 describe('routing and persistence', () => {
