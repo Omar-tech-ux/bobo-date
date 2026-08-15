@@ -27,6 +27,13 @@ import {
   PixelTimePicker,
 } from "./components/PixelDateTimePickers";
 import { ThemeMusic } from "./components/ThemeMusic";
+import { OnlineProvider, useOnline } from "./online/OnlineContext";
+import {
+  AccountPage,
+  InboxPage,
+  InvitationPage,
+  PairingPage,
+} from "./online/OnlinePages";
 
 const sadMessages = [
   "my heart did a tiny ouch 🥺",
@@ -60,6 +67,14 @@ function useHashRoute() {
 }
 
 export function App() {
+  return (
+    <OnlineProvider>
+      <AppRoutes />
+    </OnlineProvider>
+  );
+}
+
+function AppRoutes() {
   const route = useHashRoute();
   const storyUnlocked = loadStoryProgress().scrapbookCompleted;
 
@@ -71,8 +86,28 @@ export function App() {
   if (route === "/world") page = storyUnlocked ? <WorldPage /> : <ScrapbookPage />;
   if (route === "/cinema") page = storyUnlocked ? <CinemaPage /> : <ScrapbookPage />;
   if (route === "/gallery-room") page = storyUnlocked ? <GalleryRoomPage /> : <ScrapbookPage />;
+  if (route === "/account") page = <AccountPage />;
+  if (route === "/pair") page = <PairingPage />;
+  if (route === "/inbox") page = <InboxPage />;
+  const invitationMatch = route.match(/^\/invite\/([^/]+)$/);
+  if (invitationMatch) page = <InvitationPage invitationId={invitationMatch[1]} />;
 
-  return <><ThemeMusic route={route} />{page}</>;
+  return <>
+    <ThemeMusic route={route} />
+    {route !== "/" && <LoveMailboxLink />}
+    {page}
+  </>;
+}
+
+function LoveMailboxLink() {
+  const { user, receivedInvites } = useOnline();
+  const pendingCount = receivedInvites.filter((invite) => invite.status === "pending").length;
+  return (
+    <a className='love-mailbox-link' href={user ? "#/inbox" : "#/account"} aria-label='Open our love mailbox'>
+      <span aria-hidden='true'>✉</span>
+      {pendingCount > 0 && <b aria-label={`${pendingCount} waiting invitation${pendingCount === 1 ? "" : "s"}`}>{pendingCount}</b>}
+    </a>
+  );
 }
 
 function PixelScene({ compact = false }: { compact?: boolean }) {
@@ -297,6 +332,7 @@ function TermsPage() {
 }
 
 export function PlannerPage() {
+  const { configured, user, pairing, sendInvitation } = useOnline();
   const previous = loadPlan();
   const detectedZone = previous?.guestTimeZone ?? detectTimeZone();
   const [date, setDate] = useState(previous?.date ?? "");
@@ -310,13 +346,14 @@ export function PlannerPage() {
     "all" | "date" | "time" | "activity" | "timezone" | "schedule" | null
   >(null);
   const [validationAttempt, setValidationAttempt] = useState(0);
+  const [sending, setSending] = useState(false);
   const zones = useMemo(() => getTimeZones(detectedZone), [detectedZone]);
   const preview = useMemo(
     () => getPlanTimes({ date, time, guestTimeZone }),
     [date, time, guestTimeZone],
   );
 
-  const submitPlan = (event: FormEvent<HTMLFormElement>) => {
+  const submitPlan = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setValidationAttempt((attempt) => attempt + 1);
 
@@ -370,7 +407,32 @@ export function PlannerPage() {
       createdAt: new Date().toISOString(),
     };
     savePlan(plan);
-    goTo("/confirmed");
+
+    if (!configured) {
+      goTo("/confirmed");
+      return;
+    }
+    if (!user) {
+      setError("This ticket needs a sender, cutie ♡ Sign in to your love mailbox, then come right back—your choices are saved.");
+      setErrorField(null);
+      return;
+    }
+    if (!pairing.partner) {
+      setError("Your ticket needs its one special recipient ♡ Pair your two accounts first, then come right back.");
+      setErrorField(null);
+      return;
+    }
+
+    setSending(true);
+    try {
+      const invitation = await sendInvitation(plan);
+      goTo(`/invite/${invitation.id}`);
+    } catch (sendError) {
+      setError(sendError instanceof Error ? sendError.message : "Our tiny mail carrier got lost. Please try once more.");
+      setErrorField(null);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -515,6 +577,19 @@ export function PlannerPage() {
             </div>
           </div>
 
+          {configured && (
+            <div className='ticket-recipient'>
+              <span aria-hidden='true'>✉</span>
+              {pairing.partner ? (
+                <p>This ticket will fly only to <strong>{pairing.partner.display_name}</strong> (@{pairing.partner.username}).</p>
+              ) : user ? (
+                <p><a href='#/pair'>Pair your accounts</a> so this ticket knows where to fly.</p>
+              ) : (
+                <p><a href='#/account'>Sign in or make your account</a> before locking in the date.</p>
+              )}
+            </div>
+          )}
+
           {error && (
             <div
               className='cute-validation'
@@ -526,8 +601,8 @@ export function PlannerPage() {
               <p>{error}</p>
             </div>
           )}
-          <button className='pixel-button lock-button' data-sound='confirm' type='submit'>
-            LOCK IN OUR DATE ♥
+          <button className='pixel-button lock-button' data-sound='confirm' type='submit' disabled={sending}>
+            {sending ? "SENDING YOUR TICKET…" : configured ? "SEND OUR DATE INVITE ♥" : "LOCK IN OUR DATE ♥"}
           </button>
         </form>
       </section>

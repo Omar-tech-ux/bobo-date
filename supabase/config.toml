@@ -1,0 +1,25 @@
+project_id = "mkokgytybuencwkilpbh"
+
+[auth]
+site_url = "https://omar-tech-ux.github.io/bobo-date/"
+additional_redirect_urls = [
+  "https://omar-tech-ux.github.io/bobo-date/**",
+  "http://127.0.0.1:5173/**",
+  "http://localhost:5173/**",
+]
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+secure_password_change = false
+max_frequency = "1m0s"
+otp_length = 8
+otp_expiry = 3600
+
+[functions.notify-love-mail]
+verify_jwt = true

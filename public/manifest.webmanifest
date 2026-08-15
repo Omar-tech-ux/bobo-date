@@ -1,0 +1,25 @@
+{
+  "name": "Bobo's Little Date World",
+  "short_name": "Bobo ♡",
+  "description": "A private little long-distance date world for two people.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f39abb",
+  "theme_color": "#d94a82",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./icons/bobo-heart.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/bobo-heart-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

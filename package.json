@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@fontsource/pixelify-sans": "^5.2.6",
+    "@supabase/supabase-js": "^2.112.3",
     "luxon": "^3.7.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
@@ -24,8 +25,10 @@
     "@types/react-dom": "^19.1.7",
     "@vitejs/plugin-react": "^5.0.2",
     "jsdom": "^26.1.0",
+    "supabase": "^2.114.0",
     "typescript": "~5.8.3",
     "vite": "^7.1.2",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "web-push": "^3.6.7"
   }
 }

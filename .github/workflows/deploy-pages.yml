@@ -17,6 +17,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      VITE_SUPABASE_URL: https://mkokgytybuencwkilpbh.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_M8AbVr1SZRt0Ndz7EG2jyQ_50_30D0S
+      VITE_VAPID_PUBLIC_KEY: BD3oW-_wtv2V2CvgNyra4addO7qRcU032ev37vPLdJonN7VeHtMdXIQPGqbCu5p7qkFktEdjaMMOdSe1Ehr7OuU
     steps:
       - name: Check out the app
         uses: actions/checkout@v6
