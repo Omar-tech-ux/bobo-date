@@ -41,6 +41,14 @@ const OnlineContext = createContext<OnlineContextValue | null>(null)
 
 function readableError(error: unknown) {
   if (error instanceof Error) return error.message
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof error.message === 'string'
+  ) {
+    return error.message
+  }
   return 'The love-mail carrier tripped over a cloud. Please try again.'
 }
 
