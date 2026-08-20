@@ -56,6 +56,28 @@ describe('proposal experience', () => {
 
     expect(screen.getByRole('link', { name: /open our love mailbox/i })).toHaveAttribute('href', '#/account')
   })
+
+  it('sends a signed-out Yes to sign in and preserves the memories destination', async () => {
+    vi.useFakeTimers()
+    render(<ProposalPage />)
+    fireEvent.click(screen.getByRole('button', { name: /skip intro/i }))
+    fireEvent.click(screen.getByRole('button', { name: /yes/i }))
+    act(() => vi.advanceTimersByTime(750))
+
+    expect(window.location.hash).toBe('#/account?next=%2Fmemories')
+  })
+
+  it('sends a signed-in Yes to the memories hub instead of the planner', () => {
+    vi.useFakeTimers()
+    render(<ProposalPage signedIn />)
+    fireEvent.click(screen.getByRole('button', { name: /skip intro/i }))
+    expect(screen.getByRole('link', { name: /open our love mailbox/i })).toHaveAttribute('href', '#/inbox')
+    fireEvent.click(screen.getByRole('button', { name: /yes/i }))
+    act(() => vi.advanceTimersByTime(750))
+
+    expect(window.location.hash).toBe('#/memories')
+    expect(window.location.hash).not.toContain('/plan')
+  })
 })
 
 describe('routing and persistence', () => {

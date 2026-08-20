@@ -7,7 +7,7 @@ import {
   loadStoryProgress,
   markGalleryPhotoViewed,
 } from '../storage'
-import { CinemaPage, GalleryRoomPage, ScrapbookPage, WorldPage } from './StoryPages'
+import { CinemaPage, GalleryRoomPage, MemoriesPage, ScrapbookPage, WorldPage } from './StoryPages'
 
 beforeEach(() => {
   window.location.hash = ''
@@ -38,7 +38,9 @@ describe('scrapbook journey', () => {
   it('guards the world until the scrapbook has been completed', () => {
     window.location.hash = '#/world'
     render(<App />)
-    expect(screen.getByRole('heading', { name: 'US ♡' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /where should our hearts go/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /turn our scrapbook pages/i })).toHaveAttribute('href', '#/scrapbook')
+    expect(screen.queryByRole('link', { name: /follow the kitten/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /our little world/i })).not.toBeInTheDocument()
   })
 
@@ -46,6 +48,10 @@ describe('scrapbook journey', () => {
     vi.useFakeTimers()
     window.location.hash = '#/world'
     render(<App />)
+    act(() => {
+      window.location.hash = '#/scrapbook'
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+    })
 
     for (let page = 1; page < 10; page += 1) {
       fireEvent.click(screen.getByRole('button', { name: 'Next memory' }))
@@ -54,6 +60,19 @@ describe('scrapbook journey', () => {
     act(() => vi.advanceTimersByTime(700))
 
     expect(screen.getByRole('heading', { name: /our little world/i })).toBeInTheDocument()
+  })
+
+  it('shows direct routes to every place after the scrapbook unlock', () => {
+    window.localStorage.setItem(STORY_PROGRESS_KEY, JSON.stringify({
+      scrapbookCompleted: true,
+      viewedGalleryIds: [],
+    }))
+    render(<MemoriesPage />)
+
+    expect(screen.getByRole('link', { name: /turn our scrapbook pages/i })).toHaveAttribute('href', '#/scrapbook')
+    expect(screen.getByRole('link', { name: /follow the kitten/i })).toHaveAttribute('href', '#/world')
+    expect(screen.getByRole('link', { name: /watch our little movie/i })).toHaveAttribute('href', '#/cinema')
+    expect(screen.getByRole('link', { name: /visit the memory room/i })).toHaveAttribute('href', '#/gallery-room')
   })
 
   it('supports keyboard page turning', () => {
@@ -89,6 +108,7 @@ describe('walkable world and rooms', () => {
     render(<WorldPage />)
 
     expect(screen.getByRole('img', { name: /tiny white cat/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /our places/i })).toHaveAttribute('href', '#/memories')
     expect(screen.getByRole('button', { name: /left door cinema/i })).toHaveAttribute('data-sound', 'door')
     await user.click(screen.getByRole('button', { name: /left door cinema/i }))
     expect(window.location.hash).toBe('#/cinema')

@@ -19,6 +19,7 @@ import { activities, type ActivityId, type DatePlan } from "./types";
 import {
   CinemaPage,
   GalleryRoomPage,
+  MemoriesPage,
   ScrapbookPage,
   WorldPage,
 } from "./story/StoryPages";
@@ -34,6 +35,13 @@ import {
   InvitationPage,
   PairingPage,
 } from "./online/OnlinePages";
+import {
+  accountRoute,
+  isStoryRoute,
+  navigate,
+  readHashLocation,
+  type HashLocation,
+} from "./navigation";
 
 const sadMessages = [
   "my heart did a tiny ouch 🥺",
@@ -44,26 +52,22 @@ const sadMessages = [
   "okay… the YES is basically destiny now 💗",
 ];
 
-function getRoute() {
-  return window.location.hash.slice(1) || "/";
-}
-
 function goTo(route: string) {
-  window.location.hash = route;
+  navigate(route);
 }
 
 function useHashRoute() {
-  const [route, setRoute] = useState(() => ({ path: getRoute() }));
+  const [route, setRoute] = useState<HashLocation>(() => readHashLocation());
 
   useEffect(() => {
     // Keep an object state so a deliberate same-hash refresh can re-check
     // local story progress after the scrapbook unlocks the world.
-    const onHashChange = () => setRoute({ path: getRoute() });
+    const onHashChange = () => setRoute(readHashLocation());
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  return route.path;
+  return route;
 }
 
 export function App() {
@@ -75,28 +79,56 @@ export function App() {
 }
 
 function AppRoutes() {
-  const route = useHashRoute();
+  const location = useHashRoute();
+  const route = location.path;
+  const { configured, loading, user } = useOnline();
   const storyUnlocked = loadStoryProgress().scrapbookCompleted;
 
-  let page = <ProposalPage />;
+  let page = <ProposalPage signedIn={Boolean(user)} />;
   if (route === "/terms") page = <TermsPage />;
   if (route === "/plan") page = <PlannerPage />;
   if (route === "/confirmed") page = <ConfirmationPage />;
+  if (route === "/memories") page = <MemoriesPage />;
   if (route === "/scrapbook") page = <ScrapbookPage />;
-  if (route === "/world") page = storyUnlocked ? <WorldPage /> : <ScrapbookPage />;
-  if (route === "/cinema") page = storyUnlocked ? <CinemaPage /> : <ScrapbookPage />;
-  if (route === "/gallery-room") page = storyUnlocked ? <GalleryRoomPage /> : <ScrapbookPage />;
+  if (route === "/world") page = storyUnlocked ? <WorldPage /> : <MemoriesPage />;
+  if (route === "/cinema") page = storyUnlocked ? <CinemaPage /> : <MemoriesPage />;
+  if (route === "/gallery-room") page = storyUnlocked ? <GalleryRoomPage /> : <MemoriesPage />;
   if (route === "/account") page = <AccountPage />;
   if (route === "/pair") page = <PairingPage />;
   if (route === "/inbox") page = <InboxPage />;
   const invitationMatch = route.match(/^\/invite\/([^/]+)$/);
-  if (invitationMatch) page = <InvitationPage invitationId={invitationMatch[1]} />;
+  if (invitationMatch) {
+    page = (
+      <InvitationPage
+        invitationId={invitationMatch[1]}
+        deliveryWarning={location.search.get("delivery") === "missing"}
+      />
+    );
+  }
+
+  if (isStoryRoute(route) && configured && !loading && !user) {
+    page = <StorySignInRedirect destination={route} />;
+  }
+
+  const showMailboxShortcut = isStoryRoute(route) || route === "/terms" || route === "/confirmed";
 
   return <>
     <ThemeMusic route={route} />
-    {route !== "/" && <LoveMailboxLink />}
+    {showMailboxShortcut && <LoveMailboxLink />}
     {page}
   </>;
+}
+
+function StorySignInRedirect({ destination }: { destination: string }) {
+  useEffect(() => goTo(accountRoute(destination)), [destination]);
+
+  return (
+    <main className='online-screen'>
+      <section className='mailbox-paper mailbox-loading-paper'>
+        <p className='mailbox-loading'>Opening the little sign-in gate… ♡</p>
+      </section>
+    </main>
+  );
 }
 
 function LoveMailboxLink() {
@@ -208,14 +240,17 @@ function Intro({ onFinish }: { onFinish: () => void }) {
   );
 }
 
-export function ProposalPage() {
+export function ProposalPage({ signedIn = false }: { signedIn?: boolean }) {
   const [showIntro, setShowIntro] = useState(true);
   const [noCount, setNoCount] = useState(0);
   const [celebrating, setCelebrating] = useState(false);
 
   const sayYes = () => {
     setCelebrating(true);
-    window.setTimeout(() => goTo("/plan"), 700);
+    window.setTimeout(
+      () => goTo(signedIn ? "/memories" : accountRoute("/memories")),
+      700,
+    );
   };
 
   if (showIntro) return <Intro onFinish={() => setShowIntro(false)} />;
@@ -267,7 +302,10 @@ export function ProposalPage() {
           </a>
           .
         </p>
-        <a className='pixel-button proposal-mailbox-button' href='#/account'>
+        <a
+          className='pixel-button proposal-mailbox-button'
+          href={signedIn ? '#/inbox' : '#/account'}
+        >
           <span aria-hidden='true'>✉</span>
           OPEN OUR LOVE MAILBOX
         </a>
@@ -429,8 +467,9 @@ export function PlannerPage() {
 
     setSending(true);
     try {
-      const invitation = await sendInvitation(plan);
-      goTo(`/invite/${invitation.id}`);
+      const result = await sendInvitation(plan);
+      const deliveryMissing = result.notification.delivered < 1;
+      goTo(`/invite/${result.invitation.id}${deliveryMissing ? "?delivery=missing" : ""}`);
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : "Our tiny mail carrier got lost. Please try once more.");
       setErrorField(null);
@@ -625,8 +664,8 @@ function ConfirmationPage() {
         <section className='pixel-paper confirmation-paper'>
           <h1>Our ticket is still blank</h1>
           <p>Let’s pick a date first, Bobo.</p>
-          <a className='pixel-button link-button' href='#/plan'>
-            PICK A DATE
+          <a className='pixel-button link-button' href='#/inbox'>
+            OPEN OUR LOVE MAILBOX
           </a>
         </section>
       </main>
@@ -668,26 +707,12 @@ function ConfirmationPage() {
           </div>
         </article>
         <div className='confirmation-actions'>
-          <a
-            href='#/scrapbook'
-            className='pixel-button link-button story-button'
-          >
-            OPEN OUR SCRAPBOOK ♡
+          <a href='#/memories' className='pixel-button link-button story-button'>
+            {storyUnlocked ? 'VISIT OUR LITTLE WORLD ᨒ' : 'OPEN OUR SCRAPBOOK ♡'}
           </a>
-          {storyUnlocked && (
-            <a
-              href='#/world'
-              className='pixel-button link-button world-button'
-            >
-              VISIT OUR LITTLE WORLD ᨒ
-            </a>
-          )}
-          <a
-            href='#/plan'
-            className='text-link change-plan-link'
-          >
-            change our plan
-√          </a>
+          <a href='#/inbox' className='text-link change-plan-link'>
+            open our love mailbox
+          </a>
           <a href='#/' className='text-link replay-link'>
             replay from the beginning
           </a>

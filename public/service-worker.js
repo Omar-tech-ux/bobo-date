@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bobo-date-shell-v2'
+const CACHE_NAME = 'bobo-date-shell-v3'
 const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './icons/bobo-heart.svg', './icons/bobo-heart-512.png']
 
 self.addEventListener('install', (event) => {
@@ -30,14 +30,28 @@ self.addEventListener('fetch', (event) => {
 })
 
 self.addEventListener('push', (event) => {
-  const data = event.data?.json() ?? {}
-  event.waitUntil(self.registration.showNotification(data.title ?? 'A tiny letter arrived ♡', {
-    body: data.body ?? 'Open your love mailbox.',
-    icon: data.icon ?? './icons/bobo-heart.svg',
-    badge: './icons/bobo-heart.svg',
-    tag: data.tag ?? 'bobo-love-mail',
-    data: { route: data.route ?? '#/inbox' },
-  }))
+  event.waitUntil((async () => {
+    let data = {}
+    try {
+      data = event.data?.json() ?? {}
+    } catch {
+      data = { body: event.data?.text() || 'Open your love mailbox.' }
+    }
+
+    await self.registration.showNotification(data.title ?? 'A tiny letter arrived ♡', {
+      body: data.body ?? 'Open your love mailbox.',
+      icon: data.icon ?? './icons/bobo-heart.svg',
+      badge: './icons/bobo-heart.svg',
+      tag: data.tag ?? 'bobo-love-mail',
+      renotify: true,
+      timestamp: Date.now(),
+      data: { route: data.route ?? '#/inbox' },
+    })
+
+    if ('setAppBadge' in self.registration) {
+      await self.registration.setAppBadge(1)
+    }
+  })())
 })
 
 self.addEventListener('notificationclick', (event) => {
@@ -47,6 +61,7 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
+      if ('clearAppBadge' in self.registration) await self.registration.clearAppBadge()
       for (const client of clients) {
         if ('focus' in client) {
           await client.navigate(destination)

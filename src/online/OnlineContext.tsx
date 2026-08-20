@@ -10,9 +10,20 @@ import {
 import type { Session, User } from '@supabase/supabase-js'
 import { activities, type DatePlan } from '../types'
 import { getPlanTimes } from '../dateTime'
-import { showLiveInvitationNotification } from './pushNotifications'
+import {
+  requestPushDelivery,
+  setPendingInvitationBadge,
+  showLiveInvitationNotification,
+  syncExistingPushSubscription,
+} from './pushNotifications'
 import { isOnlineConfigured, supabase } from './supabase'
-import type { DateInvitation, PairingDetails, Profile } from './types'
+import type {
+  DateInvitation,
+  InvitationSendResult,
+  PairingDetails,
+  Profile,
+  PushDeliveryResult,
+} from './types'
 
 type OnlineContextValue = {
   configured: boolean
@@ -27,12 +38,12 @@ type OnlineContextValue = {
   signOut: () => Promise<void>
   createPairCode: () => Promise<string>
   joinPairCode: (code: string) => Promise<void>
-  sendInvitation: (plan: DatePlan) => Promise<DateInvitation>
+  sendInvitation: (plan: DatePlan) => Promise<InvitationSendResult>
   respondToInvitation: (
     invitationId: string,
     status: 'accepted' | 'needs_changes' | 'declined',
     note?: string,
-  ) => Promise<void>
+  ) => Promise<PushDeliveryResult>
 }
 
 const emptyPairing: PairingDetails = { coupleId: null, code: null, partner: null }
@@ -105,8 +116,10 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
     )
 
     const invitations = (invitesResult.data ?? []) as DateInvitation[]
-    setReceivedInvites(invitations.filter((invite) => invite.recipient_id === userId))
+    const received = invitations.filter((invite) => invite.recipient_id === userId)
+    setReceivedInvites(received)
     setSentInvites(invitations.filter((invite) => invite.sender_id === userId))
+    void setPendingInvitationBadge(received.filter((invite) => invite.status === 'pending').length)
     setLoading(false)
   }, [])
 
@@ -119,6 +132,13 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
     })
     return () => data.subscription.unsubscribe()
   }, [refresh])
+
+  useEffect(() => {
+    if (!session?.user) return
+    void syncExistingPushSubscription(session.user.id).catch((error) => {
+      console.warn('Could not refresh this device push subscription:', readableError(error))
+    })
+  }, [session?.user])
 
   useEffect(() => {
     if (!supabase || !session?.user) return
@@ -201,11 +221,9 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
           .select('*')
           .single()
         if (error) throw new Error(readableError(error))
-        await supabase.functions.invoke('notify-love-mail', {
-          body: { invitationId: data.id, event: 'invited' },
-        })
+        const notification = await requestPushDelivery({ invitationId: data.id, event: 'invited' })
         await refresh()
-        return data as DateInvitation
+        return { invitation: data as DateInvitation, notification }
       },
       respondToInvitation: async (invitationId, status, note = '') => {
         if (!supabase || !session?.user) throw new Error('Please sign in first.')
@@ -219,10 +237,9 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
           .eq('id', invitationId)
           .eq('recipient_id', session.user.id)
         if (error) throw new Error(readableError(error))
-        await supabase.functions.invoke('notify-love-mail', {
-          body: { invitationId, event: 'responded' },
-        })
+        const notification = await requestPushDelivery({ invitationId, event: 'responded' })
         await refresh()
+        return notification
       },
     }),
     [loading, pairing, profile, receivedInvites, refresh, sentInvites, session],

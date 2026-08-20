@@ -32,3 +32,29 @@ export type PairingDetails = {
   code: string | null
   partner: Partner | null
 }
+
+export type PushDeliveryResult = {
+  attempted: number
+  delivered: number
+  expired: number
+  failed: number
+  reason?: 'no-subscription' | 'vapid-not-configured' | 'delivery-failed' | 'partial-delivery' | 'function-error'
+}
+
+export type InvitationSendResult = {
+  invitation: DateInvitation
+  notification: PushDeliveryResult
+}
+
+export type NotificationSetupKind =
+  | 'unsupported'
+  | 'installation-required'
+  | 'permission-needed'
+  | 'denied'
+  | 'subscribed'
+  | 'delivery-error'
+
+export type NotificationSetupStatus = {
+  kind: NotificationSetupKind
+  message: string
+}

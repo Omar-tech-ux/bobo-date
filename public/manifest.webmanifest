@@ -1,6 +1,7 @@
 {
   "name": "Bobo's Little Date World",
   "short_name": "Bobo ♡",
+  "id": "./",
   "description": "A private little long-distance date world for two people.",
   "start_url": "./",
   "scope": "./",

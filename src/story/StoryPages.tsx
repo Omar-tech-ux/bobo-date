@@ -90,6 +90,100 @@ function MemorySheet({ page, index }: { page: MemoryPage; index: number }) {
   )
 }
 
+export type StoryDestination = {
+  id: 'scrapbook' | 'world' | 'cinema' | 'gallery'
+  route: string
+  title: string
+  description: string
+  icon: string
+  requiresScrapbook: boolean
+}
+
+const storyDestinations: StoryDestination[] = [
+  {
+    id: 'scrapbook',
+    route: '/scrapbook',
+    title: 'Turn our scrapbook pages',
+    description: 'Ten little pieces of us, kept safe between pink pages.',
+    icon: '▤',
+    requiresScrapbook: false,
+  },
+  {
+    id: 'world',
+    route: '/world',
+    title: 'Follow the kitten',
+    description: 'Walk the curved paths to the two tiny houses.',
+    icon: 'ᨒ',
+    requiresScrapbook: true,
+  },
+  {
+    id: 'cinema',
+    route: '/cinema',
+    title: 'Watch our little movie',
+    description: 'The cutest audience already saved us the best seats.',
+    icon: '▶',
+    requiresScrapbook: true,
+  },
+  {
+    id: 'gallery',
+    route: '/gallery-room',
+    title: 'Visit the memory room',
+    description: 'Open every frame and find the letter waiting inside.',
+    icon: '▣',
+    requiresScrapbook: true,
+  },
+]
+
+function StoryNavigation({ light = false }: { light?: boolean }) {
+  return (
+    <nav className={`story-travel-nav${light ? ' story-travel-nav--light' : ''}`} aria-label='Our little world navigation'>
+      <a href='#/' aria-label='Back to the pink sky'>← SKY</a>
+      <a href='#/memories'>♡ OUR PLACES</a>
+    </nav>
+  )
+}
+
+export function MemoriesPage() {
+  const unlocked = loadStoryProgress().scrapbookCompleted
+
+  return (
+    <main className='story-screen memories-screen'>
+      <StoryNavigation />
+      <header className='memories-heading'>
+        <div className='memories-guide-cat' aria-hidden='true'><PixelKitten /></div>
+        <h1>Where should our hearts go?</h1>
+        <p>{unlocked ? 'Every little place is waiting for us.' : 'Our scrapbook knows the way. Finish it once to open the whole world.'}</p>
+      </header>
+
+      <section className='memory-destination-map' aria-label='Choose a place in our little world'>
+        <div className='destination-path' aria-hidden='true'><i /><i /><i /></div>
+        {storyDestinations.map((destination, index) => {
+          const locked = destination.requiresScrapbook && !unlocked
+          const content = (
+            <>
+              <span className='destination-number'>{String(index + 1).padStart(2, '0')}</span>
+              <span className='destination-icon' aria-hidden='true'>{locked ? '♙' : destination.icon}</span>
+              <strong>{destination.title}</strong>
+              <span className='destination-description'>{destination.description}</span>
+              <span className='destination-status'>{locked ? 'finish our scrapbook to unlock' : 'enter →'}</span>
+            </>
+          )
+
+          return locked ? (
+            <div className={`story-destination story-destination--${destination.id} story-destination--locked`} aria-disabled='true' key={destination.id}>
+              {content}
+            </div>
+          ) : (
+            <a className={`story-destination story-destination--${destination.id}`} data-sound='door' href={`#${destination.route}`} key={destination.id}>
+              {content}
+            </a>
+          )
+        })}
+      </section>
+    </main>
+  )
+}
+
 export function ScrapbookPage() {
   const pages = storyContent.memories
   const [index, setIndex] = useState(0)
@@ -144,6 +238,7 @@ export function ScrapbookPage() {
   if (pages.length === 0) {
     return (
       <main className='story-screen scrapbook-screen'>
+        <StoryNavigation light />
         <section className='empty-story-page'>
           <h1>Our scrapbook is waiting</h1>
           <p>Add your first memory in the story content file.</p>
@@ -158,7 +253,7 @@ export function ScrapbookPage() {
   return (
     <main className={`story-screen scrapbook-screen${closing ? ' scrapbook-screen--closing' : ''}`}>
       <div className='scrapbook-stars' aria-hidden='true'><i>✦</i><i>♥</i><i>✦</i><i>♥</i></div>
-      <a href='#/confirmed' className='room-back scrapbook-back'>← our date ticket</a>
+      <StoryNavigation light />
       <section className='scrapbook-wrap' aria-label='Our scrapbook'>
         <div className='scrapbook-title'>
           <span>OUR LITTLE BOOK OF</span>
@@ -490,7 +585,7 @@ export function WorldPage() {
   return (
     <main className='story-screen world-screen'>
       <header className='world-header'>
-        <a href='#/confirmed' className='room-back'>← date ticket</a>
+        <StoryNavigation />
         <div>
           <h1>Our little world</h1>
           <p>Tap a path or use WASD / arrow keys to walk.</p>
@@ -595,7 +690,7 @@ export function CinemaPage() {
 
   return (
     <main className='story-screen cinema-screen'>
-      <a href='#/world' className='room-back room-back--light'>← back to our little world</a>
+      <StoryNavigation light />
       <div className='cinema-lights' aria-hidden='true'>{Array.from({ length: 12 }, (_, i) => <i key={i} />)}</div>
       <section className='cinema-stage'>
         <div className='cinema-sign'><span>NOW SHOWING</span><h1>{video.title}</h1></div>
@@ -709,7 +804,7 @@ export function GalleryRoomPage() {
 
   return (
     <main className='story-screen gallery-room-screen'>
-      <a href='#/world' className='room-back'>← back to our little world</a>
+      <StoryNavigation />
       <section className='gallery-room-content'>
         <div className='gallery-room-title'>
           <h1>A room full of us</h1>
