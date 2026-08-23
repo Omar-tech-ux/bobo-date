@@ -44,9 +44,17 @@ function failureResponse(code: FailureCode) {
 
 function failureForStage(stage: FailureStage): FailureCode {
   if (stage === 'authentication') return 'authentication'
-  if (stage === 'request' || stage === 'invitation') return 'invalid-request'
+  if (stage === 'request') return 'invalid-request'
   if (stage === 'configuration') return 'configuration'
   return 'database'
+}
+
+function errorMessage(error: unknown) {
+  if (error instanceof Error) return error.message.slice(0, 240)
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    return error.message.slice(0, 240)
+  }
+  return 'Unknown error'
 }
 
 function getBearerToken(value: string | null) {
@@ -218,7 +226,7 @@ Deno.serve(async (request) => {
     return Response.json({ ...result, ...(reason ? { reason } : {}) }, { headers: corsHeaders })
   } catch (error) {
     const code = failureForStage(stage)
-    const message = error instanceof Error ? error.message.slice(0, 240) : 'Unknown error'
+    const message = errorMessage(error)
     console.error(`Love-mail function failed stage=${stage} code=${code} message=${message}`)
     return failureResponse(code)
   }
