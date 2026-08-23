@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getNotificationStatus } from './pushNotifications'
+import { FunctionsHttpError } from '@supabase/supabase-js'
+import {
+  createTestPushRequest,
+  getNotificationStatus,
+  getPushFailureCode,
+  normalizeDeliveryResult,
+} from './pushNotifications'
 
 function installNotificationMocks(permission: NotificationPermission, subscription: object | null = null) {
   vi.stubGlobal('Notification', { permission })
@@ -42,5 +48,37 @@ describe('notification capability status', () => {
   it('explains when notification permission was denied', async () => {
     installNotificationMocks('denied')
     expect(await getNotificationStatus()).toMatchObject({ kind: 'denied' })
+  })
+})
+
+describe('push delivery contract', () => {
+  it('targets a test notification to the current device endpoint', () => {
+    expect(createTestPushRequest({ endpoint: 'https://web.push.apple.com/current-device' })).toEqual({
+      event: 'test',
+      endpoint: 'https://web.push.apple.com/current-device',
+    })
+  })
+
+  it('normalizes gateway acceptance without claiming device delivery', () => {
+    expect(normalizeDeliveryResult({ attempted: '3', accepted: 2, expired: 1, failed: 0 })).toEqual({
+      attempted: 3,
+      accepted: 2,
+      expired: 1,
+      failed: 0,
+      reason: undefined,
+    })
+  })
+
+  it('parses structured function error codes', async () => {
+    const error = new FunctionsHttpError(new Response(
+      JSON.stringify({ code: 'authentication', error: 'sanitized' }),
+      { status: 401, headers: { 'Content-Type': 'application/json' } },
+    ))
+    await expect(getPushFailureCode(error)).resolves.toBe('authentication')
+  })
+
+  it('falls back when a function error has an unknown response', async () => {
+    const error = new FunctionsHttpError(new Response('bad gateway', { status: 502 }))
+    await expect(getPushFailureCode(error)).resolves.toBe('function-error')
   })
 })

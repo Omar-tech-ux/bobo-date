@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bobo-date-shell-v3'
+const CACHE_NAME = 'bobo-date-shell-v4'
 const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './icons/bobo-heart.svg', './icons/bobo-heart-512.png']
 
 self.addEventListener('install', (event) => {
@@ -38,14 +38,23 @@ self.addEventListener('push', (event) => {
       data = { body: event.data?.text() || 'Open your love mailbox.' }
     }
 
-    await self.registration.showNotification(data.title ?? 'A tiny letter arrived ♡', {
-      body: data.body ?? 'Open your love mailbox.',
-      icon: data.icon ?? './icons/bobo-heart.svg',
-      badge: './icons/bobo-heart.svg',
-      tag: data.tag ?? 'bobo-love-mail',
+    // Declarative Web Push is displayed automatically by newer WebKit versions.
+    // This imperative fallback keeps the same payload working in older Safari and
+    // other browsers, and becomes the replacement notification when it succeeds.
+    const proposed = data.web_push === 8030 && data.notification
+      ? data.notification
+      : data
+    const route = proposed.data?.route ?? data.route ?? '#/inbox'
+    const navigate = proposed.navigate ?? new URL(route, self.registration.scope).href
+
+    await self.registration.showNotification(proposed.title ?? 'A tiny letter arrived ♡', {
+      body: proposed.body ?? 'Open your love mailbox.',
+      icon: proposed.icon ?? './icons/bobo-heart-512.png',
+      badge: './icons/bobo-heart-512.png',
+      tag: proposed.tag ?? 'bobo-love-mail',
       renotify: true,
       timestamp: Date.now(),
-      data: { route: data.route ?? '#/inbox' },
+      data: { route, navigate },
     })
 
     if ('setAppBadge' in self.registration) {
@@ -57,7 +66,8 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const route = event.notification.data?.route ?? '#/inbox'
-  const destination = new URL(route, self.registration.scope).href
+  const destination = event.notification.data?.navigate
+    ?? new URL(route, self.registration.scope).href
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {

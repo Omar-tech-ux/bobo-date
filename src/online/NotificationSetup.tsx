@@ -50,13 +50,20 @@ export function NotificationSetup({ userId, compact = false }: { userId: string;
     setBusy(true)
     setNotice('Sending a tiny test letter…')
     const result = await sendTestNotification()
-    if (result.delivered > 0) {
-      setNotice('Test letter sent! Lock your phone for a moment and listen for the tiny tap ♡')
+    if (result.accepted > 0) {
+      setNotice('Apple accepted this device’s test letter. Lock your phone for a moment and listen for the tiny tap ♡')
     } else if (result.reason === 'no-subscription') {
       setNotice('This device is not registered yet. Reconnect notifications, then try the test again.')
       await refreshStatus()
+    } else if (result.reason === 'authentication') {
+      setNotice('Your session needs refreshing. Sign out, sign back in, then try the test again.')
+    } else if (result.reason === 'configuration' || result.reason === 'database') {
+      setNotice('The notification service is temporarily unavailable. Please try again in a moment.')
+    } else if (result.reason === 'invalid-request') {
+      setNotice('This device sent an invalid test request. Reconnect notifications, then try once more.')
+      await refreshStatus()
     } else {
-      setNotice('The test letter reached the mailroom but could not fly. Please reconnect and try again.')
+      setNotice('Apple rejected this device’s mailbox address. Reconnect notifications and try again.')
     }
     setBusy(false)
   }

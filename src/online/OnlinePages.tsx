@@ -564,7 +564,7 @@ export function InvitationPage({
           ? "YAY! Your person knows it’s a date ♡"
           : "Your gentle reply is on its way ♡";
       setMessage(
-        notification.delivered > 0
+        notification.accepted > 0
           ? replyMessage
           : `${replyMessage} The ticket updated, but the background tap could not reach their phone.`,
       );
@@ -610,7 +610,7 @@ export function InvitationPage({
         </p>
         {deliveryWarning && (
           <p className='mailbox-message notification-delivery-warning' role='status'>
-            Your date ticket is safely in the mailbox, but their phone did not confirm a background notification. Ask them to open the app and test their love-letter alerts ♡
+            Your date ticket is safely in the mailbox, but no notification address was accepted by the push service. Ask them to open the app and test their love-letter alerts ♡
           </p>
         )}
         {invitation.response_note && (

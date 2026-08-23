@@ -23,6 +23,12 @@ Keep email confirmation enabled if both people can access their email. For a pri
 
 The VAPID private key is stored only in the ignored local file `supabase/.env.local`; never commit it.
 
+The Edge Function also requires this public deployment URL so declarative notifications can open the installed PWA directly:
+
+```sh
+PWA_BASE_URL=https://omar-tech-ux.github.io/bobo-date/
+```
+
 After authenticating the Supabase CLI, run:
 
 ```sh

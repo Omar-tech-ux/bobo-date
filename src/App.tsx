@@ -468,7 +468,7 @@ export function PlannerPage() {
     setSending(true);
     try {
       const result = await sendInvitation(plan);
-      const deliveryMissing = result.notification.delivered < 1;
+      const deliveryMissing = result.notification.accepted < 1;
       goTo(`/invite/${result.invitation.id}${deliveryMissing ? "?delivery=missing" : ""}`);
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : "Our tiny mail carrier got lost. Please try once more.");

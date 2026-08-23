@@ -1,5 +1,6 @@
+import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
-import type { NotificationSetupStatus, PushDeliveryResult } from './types'
+import type { NotificationSetupStatus, PushDeliveryResult, PushFailureCode } from './types'
 
 function decodeVapidKey(value: string) {
   const padding = '='.repeat((4 - (value.length % 4)) % 4)
@@ -97,7 +98,7 @@ export async function enableNotifications(userId: string) {
   const publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY?.trim()
 
   if (!publicKey) {
-    return { backgroundPushReady: false }
+    throw new Error('Background notifications are not configured for this app yet.')
   }
 
   const subscription =
@@ -111,34 +112,73 @@ export async function enableNotifications(userId: string) {
   return { backgroundPushReady: true }
 }
 
-function normalizeDeliveryResult(value: unknown): PushDeliveryResult {
+const pushFailureCodes = new Set<PushFailureCode>([
+  'authentication',
+  'invalid-request',
+  'configuration',
+  'database',
+  'no-subscription',
+  'gateway-failure',
+  'function-error',
+])
+
+function isPushFailureCode(value: unknown): value is PushFailureCode {
+  return typeof value === 'string' && pushFailureCodes.has(value as PushFailureCode)
+}
+
+export function normalizeDeliveryResult(value: unknown): PushDeliveryResult {
   const data = value && typeof value === 'object' ? value as Partial<PushDeliveryResult> : {}
   return {
     attempted: Number(data.attempted) || 0,
-    delivered: Number(data.delivered) || 0,
+    accepted: Number(data.accepted) || 0,
     expired: Number(data.expired) || 0,
     failed: Number(data.failed) || 0,
-    reason: data.reason,
+    reason: isPushFailureCode(data.reason) ? data.reason : undefined,
   }
 }
 
+export async function getPushFailureCode(error: unknown): Promise<PushFailureCode> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = await error.context.json() as { code?: unknown }
+      if (isPushFailureCode(body.code)) return body.code
+    } catch {
+      // The function returned a non-JSON error page. Use the generic fallback below.
+    }
+  }
+  return 'function-error'
+}
+
 export async function requestPushDelivery(
-  request: { event: 'test' } | { event: 'invited' | 'responded'; invitationId: string },
+  request: { event: 'test'; endpoint: string } | { event: 'invited' | 'responded'; invitationId: string },
 ): Promise<PushDeliveryResult> {
   if (!supabase) {
-    return { attempted: 0, delivered: 0, expired: 0, failed: 1, reason: 'function-error' }
+    return { attempted: 0, accepted: 0, expired: 0, failed: 1, reason: 'function-error' }
   }
 
   const { data, error } = await supabase.functions.invoke('notify-love-mail', { body: request })
   if (error) {
-    console.error('Love-mail push function failed:', error.message)
-    return { attempted: 0, delivered: 0, expired: 0, failed: 1, reason: 'function-error' }
+    const reason = await getPushFailureCode(error)
+    console.error(`Love-mail push function failed code=${reason}:`, error.message)
+    return { attempted: 0, accepted: 0, expired: 0, failed: 1, reason }
   }
   return normalizeDeliveryResult(data)
 }
 
-export function sendTestNotification() {
-  return requestPushDelivery({ event: 'test' })
+export function createTestPushRequest(subscription: Pick<PushSubscription, 'endpoint'>) {
+  return { event: 'test' as const, endpoint: subscription.endpoint }
+}
+
+export async function sendTestNotification(): Promise<PushDeliveryResult> {
+  if (!canUseNotifications() || Notification.permission !== 'granted') {
+    return { attempted: 0, accepted: 0, expired: 0, failed: 0, reason: 'no-subscription' }
+  }
+  const registration = await navigator.serviceWorker.ready
+  const subscription = await registration.pushManager.getSubscription()
+  if (!subscription) {
+    return { attempted: 0, accepted: 0, expired: 0, failed: 0, reason: 'no-subscription' }
+  }
+  return requestPushDelivery(createTestPushRequest(subscription))
 }
 
 type BadgeNavigator = Navigator & {
@@ -162,8 +202,8 @@ export async function showLiveInvitationNotification(title: string, body: string
   const registration = await navigator.serviceWorker.ready
   await registration.showNotification(title, {
     body,
-    icon: './icons/bobo-heart.svg',
-    badge: './icons/bobo-heart.svg',
+    icon: './icons/bobo-heart-512.png',
+    badge: './icons/bobo-heart-512.png',
     tag: `bobo-invite-${inviteId}`,
     data: { route: `#/invite/${inviteId}` },
   })

@@ -35,11 +35,20 @@ export type PairingDetails = {
 
 export type PushDeliveryResult = {
   attempted: number
-  delivered: number
+  accepted: number
   expired: number
   failed: number
-  reason?: 'no-subscription' | 'vapid-not-configured' | 'delivery-failed' | 'partial-delivery' | 'function-error'
+  reason?: PushFailureCode
 }
+
+export type PushFailureCode =
+  | 'authentication'
+  | 'invalid-request'
+  | 'configuration'
+  | 'database'
+  | 'no-subscription'
+  | 'gateway-failure'
+  | 'function-error'
 
 export type InvitationSendResult = {
   invitation: DateInvitation
