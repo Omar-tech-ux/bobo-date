@@ -1,6 +1,9 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
+// @ts-types="npm:@types/web-push@3.6.4"
 import webpush from 'npm:web-push@3.6.7'
+import { buildLoveMailNotification } from '../_shared/loveMailNotification.ts'
 import { buildDeclarativePushPayload } from '../_shared/pushPayload.ts'
+import { deliverWebPush } from '../_shared/webPushDelivery.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,7 +15,6 @@ type PushRequest =
   | { event: 'test'; endpoint: string }
   | { event: 'invited' | 'responded'; invitationId: string }
 
-type DeliveryOutcome = 'accepted' | 'expired' | 'failed'
 type FailureCode =
   | 'authentication'
   | 'invalid-request'
@@ -73,21 +75,6 @@ function isPushRequest(value: unknown): value is PushRequest {
     && request.invitationId.length > 0
 }
 
-function deviceClass(userAgent: string | null) {
-  const value = userAgent?.toLowerCase() ?? ''
-  if (value.includes('iphone')) return 'iphone'
-  if (value.includes('ipad')) return 'ipad'
-  if (value.includes('macintosh')) return 'mac'
-  return 'other'
-}
-
-async function endpointHash(endpoint: string) {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(endpoint))
-  return Array.from(new Uint8Array(digest).slice(0, 6))
-    .map((value) => value.toString(16).padStart(2, '0'))
-    .join('')
-}
-
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -127,10 +114,7 @@ Deno.serve(async (request) => {
 
     const callerId = userData.user.id
     let targetUser = callerId
-    let title = 'A test love letter arrived ♡'
-    let body = 'Your background notifications are working. The tiny mail carrier made it!'
-    let tag = `bobo-test-${Date.now()}`
-    let route = '#/inbox'
+    let notification = buildLoveMailNotification({ event: 'test' })
 
     if (payloadRequest.event !== 'test') {
       stage = 'invitation'
@@ -146,14 +130,11 @@ Deno.serve(async (request) => {
       const allowedCaller = payloadRequest.event === 'invited' ? invitation.sender_id : invitation.recipient_id
       if (callerId !== allowedCaller) return failureResponse('authentication')
 
-      title = payloadRequest.event === 'invited'
-        ? 'A tiny date invitation arrived ♡'
-        : 'Your date invitation has an answer ♡'
-      body = payloadRequest.event === 'invited'
-        ? 'Open your love mailbox to see what your person planned.'
-        : `The answer is: ${String(invitation.status).replace('_', ' ')}.`
-      tag = `bobo-invite-${invitation.id}`
-      route = `#/invite/${invitation.id}`
+      notification = buildLoveMailNotification({
+        event: payloadRequest.event,
+        invitationId: invitation.id,
+        invitationStatus: invitation.status,
+      })
     }
 
     stage = 'configuration'
@@ -178,46 +159,26 @@ Deno.serve(async (request) => {
     }
 
     const notificationPayload = JSON.stringify(buildDeclarativePushPayload({
-      title,
-      body,
-      tag,
-      route,
+      title: notification.title,
+      body: notification.body,
+      tag: notification.tag,
+      route: notification.route,
       baseUrl: parsedBaseUrl.href,
     }))
-    const topic = payloadRequest.event === 'test'
-      ? 'bobo-test'
-      : `invite-${tag.replaceAll('-', '').slice(-24)}`
 
     stage = 'delivery'
-    const outcomes = await Promise.all(subscriptions.map(async (subscription): Promise<DeliveryOutcome> => {
-      const hash = await endpointHash(subscription.endpoint)
-      const device = deviceClass(subscription.user_agent)
-      try {
-        await webpush.sendNotification({
-          endpoint: subscription.endpoint,
-          keys: { p256dh: subscription.p256dh, auth: subscription.auth },
-        }, notificationPayload, { TTL: 86_400, urgency: 'high', topic })
-        console.log(`Love-mail gateway accepted endpoint=${hash} device=${device}`)
-        return 'accepted'
-      } catch (error) {
-        const statusCode = (error as { statusCode?: number }).statusCode
-        if (statusCode === 404 || statusCode === 410) {
-          const { error: deleteError } = await admin.from('push_subscriptions').delete().eq('id', subscription.id)
-          if (deleteError) console.error(`Love-mail expired cleanup failed endpoint=${hash} device=${device}`)
-          return 'expired'
-        }
-        const message = error instanceof Error ? error.message.slice(0, 240) : 'Unknown web-push error'
-        console.error(`Love-mail gateway failed endpoint=${hash} device=${device} status=${statusCode ?? 'unknown'} message=${message}`)
-        return 'failed'
-      }
-    }))
-
-    const result = {
-      attempted: outcomes.length,
-      accepted: outcomes.filter((outcome) => outcome === 'accepted').length,
-      expired: outcomes.filter((outcome) => outcome === 'expired').length,
-      failed: outcomes.filter((outcome) => outcome === 'failed').length,
-    }
+    const { summary: result } = await deliverWebPush({
+      subscriptions,
+      payload: notificationPayload,
+      ttlSeconds: 86_400,
+      topic: notification.topic,
+      sendNotification: (subscription, payload, options) => webpush.sendNotification(subscription, payload, options),
+      deleteExpiredSubscription: async (subscriptionId) => {
+        const { error } = await admin.from('push_subscriptions').delete().eq('id', subscriptionId)
+        if (error) throw error
+      },
+      logLabel: 'Love-mail',
+    })
     const reason = result.failed > 0
       ? 'gateway-failure'
       : undefined

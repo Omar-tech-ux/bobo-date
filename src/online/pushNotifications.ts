@@ -64,14 +64,14 @@ export async function getNotificationStatus(): Promise<NotificationSetupStatus> 
   if (Notification.permission !== 'granted') {
     return {
       kind: 'permission-needed',
-      message: 'Let the mailbox tap your shoulder when a new date ticket arrives.',
+      message: 'Let the mailbox tap your shoulder for date tickets and anniversary reminders.',
     }
   }
 
   const registration = await navigator.serviceWorker.ready
   const subscription = await registration.pushManager.getSubscription()
   return subscription
-    ? { kind: 'subscribed', message: 'Love-mail alerts are ready on this device—even when the app is tucked away ♡' }
+    ? { kind: 'subscribed', message: 'Date and anniversary alerts are ready on this device—even when the app is tucked away ♡' }
     : { kind: 'delivery-error', message: 'Permission is on, but this device lost its mailbox address. Reconnect it below.' }
 }
 

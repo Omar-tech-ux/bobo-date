@@ -23,3 +23,6 @@ otp_expiry = 3600
 
 [functions.notify-love-mail]
 verify_jwt = true
+
+[functions.notify-anniversary]
+verify_jwt = false

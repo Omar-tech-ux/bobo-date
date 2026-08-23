@@ -48,10 +48,10 @@ export function NotificationSetup({ userId, compact = false }: { userId: string;
   const canConnect = status.kind === 'permission-needed' || status.kind === 'delivery-error'
 
   return (
-    <section className={`notification-setup notification-setup--${status.kind}${compact ? ' notification-setup--compact' : ''}`} aria-label='Date notification setup'>
+    <section className={`notification-setup notification-setup--${status.kind}${compact ? ' notification-setup--compact' : ''}`} aria-label='Love-letter notification setup'>
       <div className='notification-bell' aria-hidden='true'>♩</div>
       <div className='notification-copy'>
-        <h2>Date invitation alerts</h2>
+        <h2>Date and anniversary alerts</h2>
         <p>{status.message}</p>
         {status.kind === 'installation-required' && (
           <ol>
