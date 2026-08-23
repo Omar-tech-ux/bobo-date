@@ -1352,9 +1352,7 @@ input:focus-visible {
 .notification-notice { padding-top: 9px; border-top: 2px dashed #d18aa4; color: var(--ink) !important; }
 .notification-actions { display: flex; grid-column: 2; flex-wrap: wrap; align-items: center; gap: 11px; }
 .notification-action { min-height: 42px; padding: 8px 12px; font-size: .78rem; box-shadow: 4px 4px 0 var(--pink-dark); }
-.notification-action:disabled,
-.notification-test:disabled { opacity: .58; cursor: wait; }
-.notification-test { padding: 6px 0; border: 0; color: var(--pink-dark); background: transparent; cursor: pointer; }
+.notification-action:disabled { opacity: .58; cursor: wait; }
 .notification-setup--compact { margin: 0 0 25px; padding: 13px 14px; }
 .notification-setup--compact .notification-copy h2 { font-size: 1rem; }
 .notification-setup--compact .notification-copy > p { font-size: .86rem; }
