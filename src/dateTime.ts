@@ -48,11 +48,19 @@ export function getTodayInZone(zone: string) {
 
 export function createPlannedDateTime(date: string, time: string, zone: string) {
   if (!date || !time || !isValidTimeZone(zone)) return null
+  const timeMatch = time.match(/^(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,6})?)?$/)
+  if (!timeMatch) return null
   const value = DateTime.fromISO(`${date}T${time}`, { zone })
   if (!value.isValid) return null
 
   // Luxon shifts nonexistent DST times forward. Treat those inputs as invalid.
-  if (value.toFormat('yyyy-MM-dd') !== date || value.toFormat('HH:mm') !== time) {
+  // Supabase returns PostgreSQL time columns with seconds, while the planner
+  // stores minute-precision values, so compare both forms at second precision.
+  const expectedTime = `${timeMatch[1]}:${timeMatch[2]}:${timeMatch[3] ?? '00'}`
+  if (
+    value.toFormat('yyyy-MM-dd') !== date ||
+    value.toFormat('HH:mm:ss') !== expectedTime
+  ) {
     return null
   }
   return value
