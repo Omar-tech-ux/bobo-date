@@ -1525,9 +1525,17 @@ input:focus-visible {
 }
 
 /* Invitation changes reuse the ticket's existing pixel controls. */
-.invitation-list-item { border-bottom: 2px dashed var(--pink, #e38cad); padding-bottom: 14px; }
-.invitation-list-item .invitation-row { border-bottom: 0; }
-.invitation-list-item > .invitation-actions { padding: 0 12px; }
+.invitation-list-item { margin-top: 12px; border: 3px solid #d98aaa; background: #fffdf6; }
+.invitation-list-item .invitation-row { margin: 0; border: 0; background: transparent; }
+.invitation-list-item .invitation-row:hover { background: #fff0f4; }
+.invitation-list-item > .invitation-actions { margin: 0; padding: 0 12px 8px; }
+.invitation-list-item > .invitation-actions:empty { padding: 0; }
+.invitation-list-item .invitation-actions > .response-actions { margin: 0; flex-direction: row; justify-content: flex-end; }
+.invitation-list-item .decline-invite { min-height: 44px; padding: 8px 0 8px 12px; color: #9f476e; font-size: .82rem; font-weight: 400; text-decoration: underline; text-decoration-thickness: 1px; }
+.invitation-list-item .decline-invite:hover { color: var(--ink); }
+.invitation-list-item .invitation-edit-form { margin-top: 8px; padding-top: 12px; border-top: 2px dashed #dc8fab; }
+.invitation-list-item .invitation-edit-form .pixel-button { padding: 10px 14px; font-size: .9rem; }
+.invitation-list-item .invitation-edit-form legend { font-size: 1.1rem; }
 .invitation-actions { margin: 18px 0; }
 .invitation-actions:empty { display: none; }
 .invitation-edit-form { margin-top: 16px; }
