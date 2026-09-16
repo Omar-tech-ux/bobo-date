@@ -6,6 +6,8 @@ import { NotificationSetup } from "./NotificationSetup";
 import { clearPendingInvitationBadge } from "./pushNotifications";
 import { getAppUrl, supabase } from "./supabase";
 import { useOnline } from "./OnlineContext";
+import { InvitationActions } from "./InvitationActions";
+import { needsInvitationAnswer } from "./types";
 import type { DateInvitation, InvitationStatus } from "./types";
 
 function goTo(route: string) {
@@ -392,6 +394,7 @@ const statusCopy: Record<InvitationStatus, string> = {
   accepted: "date accepted ♡",
   needs_changes: "another time, please",
   declined: "not this one",
+  cancelled: "date canceled 🥺",
 };
 
 function InvitationRow({
@@ -401,6 +404,7 @@ function InvitationRow({
   invitation: DateInvitation;
   sent: boolean;
 }) {
+  const { user } = useOnline();
   const activity = activities.find((item) => item.id === invitation.activity);
   const preview = getPlanTimes({
     date: invitation.date,
@@ -409,6 +413,7 @@ function InvitationRow({
   });
 
   return (
+    <div className='invitation-list-item'>
     <a className='invitation-row' href={`#/invite/${invitation.id}`}>
       <span className='invitation-icon' aria-hidden='true'>
         {activity?.icon ?? "♥"}
@@ -421,9 +426,11 @@ function InvitationRow({
         </span>
       </span>
       <span className={`invite-status invite-status--${invitation.status}`}>
-        {statusCopy[invitation.status]}
+        {needsInvitationAnswer(invitation, user?.id) ? "your answer is next ♡" : statusCopy[invitation.status]}
       </span>
     </a>
+    <InvitationActions invitation={invitation} cancelOnly />
+    </div>
   );
 }
 
@@ -517,6 +524,7 @@ export function InvitationPage({
     sentInvites,
     respondToInvitation,
   } = useOnline();
+  const [editing, setEditing] = useState(false);
   const [note, setNote] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -559,7 +567,7 @@ export function InvitationPage({
     setBusy(true);
     setMessage("");
     try {
-      const notification = await respondToInvitation(invitation.id, status, note);
+      const notification = await respondToInvitation(invitation, status, note);
       const replyMessage = status === "accepted"
           ? "YAY! Your person knows it’s a date ♡"
           : "Your gentle reply is on its way ♡";
@@ -595,7 +603,7 @@ export function InvitationPage({
         </div>
         <div className='online-ticket-times'>
           <div>
-            <span>Their chosen time</span>
+            <span>{invitation.last_action === "rescheduled" ? "Proposed time" : "Their chosen time"}</span>
             <strong>{times?.guest}</strong>
           </div>
           <div>
@@ -608,16 +616,28 @@ export function InvitationPage({
         >
           {statusCopy[invitation.status]}
         </p>
+        {invitation.status === "pending" && <p className='proposal-status'>
+          {(invitation.latest_proposer_id ?? invitation.sender_id) === user?.id
+            ? "You proposed this time. Waiting for your person’s answer ♡"
+            : `${pairing.partner?.display_name ?? "Your person"} proposed this time. Your answer is next ♡`}
+        </p>}
+        {invitation.status === "accepted" && <p className='proposal-status'>
+          Time proposed by {(invitation.latest_proposer_id ?? invitation.sender_id) === user?.id ? "you" : pairing.partner?.display_name ?? "your person"} ♡
+        </p>}
+        {invitation.status === "cancelled" && invitation.cancellation_note && (
+          <blockquote>“{invitation.cancellation_note}”</blockquote>
+        )}
+        <InvitationActions key={invitation.id} invitation={invitation} disabled={busy} onEditing={setEditing} />
         {deliveryWarning && (
           <p className='mailbox-message notification-delivery-warning' role='status'>
             Your date ticket is safely in the mailbox, but no notification address was accepted by the push service. Ask them to open the app and test their love-letter alerts ♡
           </p>
         )}
-        {invitation.response_note && (
+        {invitation.status !== "cancelled" && invitation.response_note && (
           <blockquote>“{invitation.response_note}”</blockquote>
         )}
 
-        {incoming && invitation.status === "pending" && (
+        {needsInvitationAnswer(invitation, user?.id) && !editing && (
           <div className='response-box'>
             <label>
               Add a tiny note (optional)
@@ -635,13 +655,6 @@ export function InvitationPage({
                 onClick={() => void respond("accepted")}
               >
                 YES, IT’S A DATE! ♥
-              </button>
-              <button
-                className='pixel-button reschedule-invite'
-                disabled={busy}
-                onClick={() => void respond("needs_changes")}
-              >
-                SUGGEST ANOTHER TIME
               </button>
               <button
                 className='text-link decline-invite'

@@ -1,3 +1,4 @@
+import { needsInvitationAnswer } from './online/types';
 import {
   type CSSProperties,
   type FormEvent,
@@ -132,8 +133,8 @@ function StorySignInRedirect({ destination }: { destination: string }) {
 }
 
 function LoveMailboxLink() {
-  const { user, receivedInvites } = useOnline();
-  const pendingCount = receivedInvites.filter((invite) => invite.status === "pending").length;
+  const { user, receivedInvites, sentInvites } = useOnline();
+  const pendingCount = [...receivedInvites, ...sentInvites].filter((invite) => needsInvitationAnswer(invite, user?.id)).length;
   return (
     <a className='love-mailbox-link' href={user ? "#/inbox" : "#/account"} aria-label='Open our love mailbox'>
       <span aria-hidden='true'>✉</span>

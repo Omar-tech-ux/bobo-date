@@ -129,3 +129,30 @@ On iPhone/iPad, install the site from Safari using **Share → Add to Home Scree
 ## Privacy note
 
 Accounts and invitations are private under Row Level Security. The photos and video currently stored in `public/` are still public GitHub Pages assets. Moving that media to a private Supabase Storage bucket and removing it from public Git history is a separate migration.
+
+## Canceling and rescheduling invitations
+
+Deploy `20260916010000_invitation_changes.sql`, then `notify-love-mail`, then
+publish the frontend. Users with an older page open should reload it: responses
+now use the revision-checked `change_date_invitation` RPC instead of direct table
+updates. Original sender/recipient ownership stays unchanged; `latest_proposer_id`
+determines who must answer the current proposal.
+
+```sh
+npx supabase db push --linked
+npx supabase functions deploy notify-love-mail
+npm test
+npm run build
+```
+
+The rollback-only database checks require an existing paired account and leave
+no tickets or notifications behind:
+
+```sh
+npx supabase db query --linked --file supabase/tests/invitation_changes.sql
+```
+
+Both partners can cancel or propose a future time on active tickets. Cancellation
+is final, and rescheduling resets acceptance. Notification failures leave the
+saved ticket intact and show a warning. Phone delivery still depends on each
+partner's existing notification permission and subscription.

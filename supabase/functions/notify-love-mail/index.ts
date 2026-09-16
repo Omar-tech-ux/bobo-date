@@ -1,3 +1,4 @@
+import { invitationNotificationTarget } from '../_shared/invitationNotificationTarget.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 // @ts-types="npm:@types/web-push@3.6.4"
 import webpush from 'npm:web-push@3.6.7'
@@ -13,7 +14,7 @@ const corsHeaders = {
 
 type PushRequest =
   | { event: 'test'; endpoint: string }
-  | { event: 'invited' | 'responded'; invitationId: string }
+  | { event: 'invited' | 'responded' | 'cancelled' | 'rescheduled'; invitationId: string; revision?: number }
 
 type FailureCode =
   | 'authentication'
@@ -70,7 +71,8 @@ function isPushRequest(value: unknown): value is PushRequest {
   if (request.event === 'test') {
     return typeof request.endpoint === 'string' && request.endpoint.startsWith('https://')
   }
-  return (request.event === 'invited' || request.event === 'responded')
+  return ['invited', 'responded', 'cancelled', 'rescheduled'].includes(String(request.event))
+    && (request.revision === undefined || (Number.isInteger(request.revision) && Number(request.revision) >= 0))
     && typeof request.invitationId === 'string'
     && request.invitationId.length > 0
 }
@@ -126,9 +128,9 @@ Deno.serve(async (request) => {
       if (invitationError) throw new Error(invitationError.message)
       if (!invitation) return failureResponse('invalid-request')
 
-      targetUser = payloadRequest.event === 'invited' ? invitation.recipient_id : invitation.sender_id
-      const allowedCaller = payloadRequest.event === 'invited' ? invitation.sender_id : invitation.recipient_id
-      if (callerId !== allowedCaller) return failureResponse('authentication')
+      const target = invitationNotificationTarget(invitation, callerId, payloadRequest.event, payloadRequest.revision)
+      if (!target) return failureResponse('invalid-request')
+      targetUser = target
 
       notification = buildLoveMailNotification({
         event: payloadRequest.event,

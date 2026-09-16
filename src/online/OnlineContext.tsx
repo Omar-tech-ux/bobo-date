@@ -9,7 +9,8 @@ import {
 } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { activities, type DatePlan } from '../types'
-import { getPlanTimes } from '../dateTime'
+import { createPlannedDateTime, getPlanTimes, validatePlanTime } from '../dateTime'
+import { InvitationConflictError, needsInvitationAnswer } from './types'
 import {
   requestPushDelivery,
   setPendingInvitationBadge,
@@ -40,10 +41,12 @@ type OnlineContextValue = {
   joinPairCode: (code: string) => Promise<void>
   sendInvitation: (plan: DatePlan) => Promise<InvitationSendResult>
   respondToInvitation: (
-    invitationId: string,
+    invitation: DateInvitation,
     status: 'accepted' | 'needs_changes' | 'declined',
     note?: string,
   ) => Promise<PushDeliveryResult>
+  cancelInvitation: (invitation: DateInvitation, note?: string) => Promise<PushDeliveryResult>
+  rescheduleInvitation: (invitation: DateInvitation, schedule: Pick<DatePlan, 'date' | 'time' | 'guestTimeZone'>) => Promise<PushDeliveryResult>
 }
 
 const emptyPairing: PairingDetails = { coupleId: null, code: null, partner: null }
@@ -119,7 +122,7 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
     const received = invitations.filter((invite) => invite.recipient_id === userId)
     setReceivedInvites(received)
     setSentInvites(invitations.filter((invite) => invite.sender_id === userId))
-    void setPendingInvitationBadge(received.filter((invite) => invite.status === 'pending').length)
+    void setPendingInvitationBadge(invitations.filter((invite) => needsInvitationAnswer(invite, userId)).length)
     setLoading(false)
   }, [])
 
@@ -171,6 +174,35 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
     return () => {
       void client.removeChannel(channel)
     }
+  }, [refresh, session?.user])
+
+  const changeInvitation = useCallback(async (
+    invitation: DateInvitation,
+    action: 'responded' | 'cancelled' | 'rescheduled',
+    fields: Record<string, unknown> = {},
+  ): Promise<PushDeliveryResult> => {
+    if (!supabase || !session?.user) throw new Error('Please sign in first.')
+    const { data, error } = await supabase.rpc('change_date_invitation', {
+      p_invitation_id: invitation.id,
+      p_expected_revision: invitation.revision,
+      p_action: action,
+      ...fields,
+    })
+    if (error) {
+      if (error.code === '40001') {
+        await refresh().catch(() => undefined)
+        throw new InvitationConflictError()
+      }
+      throw new Error(readableError(error))
+    }
+    const updated = data as DateInvitation
+    // Apply the committed ticket even if a subsequent refresh or push fails.
+    const replace = (tickets: DateInvitation[]) => tickets.map((ticket) => ticket.id === updated.id ? updated : ticket)
+    setReceivedInvites(replace)
+    setSentInvites(replace)
+    const notification = await requestPushDelivery({ invitationId: updated.id, event: action, revision: updated.revision })
+    await refresh().catch(() => undefined)
+    return notification
   }, [refresh, session?.user])
 
   const value = useMemo<OnlineContextValue>(
@@ -225,24 +257,22 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
         await refresh()
         return { invitation: data as DateInvitation, notification }
       },
-      respondToInvitation: async (invitationId, status, note = '') => {
-        if (!supabase || !session?.user) throw new Error('Please sign in first.')
-        const { error } = await supabase
-          .from('date_invitations')
-          .update({
-            status,
-            response_note: note.trim() || null,
-            responded_at: new Date().toISOString(),
-          })
-          .eq('id', invitationId)
-          .eq('recipient_id', session.user.id)
-        if (error) throw new Error(readableError(error))
-        const notification = await requestPushDelivery({ invitationId, event: 'responded' })
-        await refresh()
-        return notification
+      respondToInvitation: (invitation, status, note = '') =>
+        changeInvitation(invitation, 'responded', { p_status: status, p_note: note.trim() || null }),
+      cancelInvitation: (invitation, note = '') =>
+        changeInvitation(invitation, 'cancelled', { p_note: note.trim() || null }),
+      rescheduleInvitation: (invitation, schedule) => {
+        const error = validatePlanTime(schedule.date, schedule.time, schedule.guestTimeZone)
+        if (error) throw new Error(error)
+        return changeInvitation(invitation, 'rescheduled', {
+          p_date: schedule.date,
+          p_time: schedule.time,
+          p_timezone: schedule.guestTimeZone,
+          p_scheduled_at: createPlannedDateTime(schedule.date, schedule.time, schedule.guestTimeZone)!.toISO(),
+        })
       },
     }),
-    [loading, pairing, profile, receivedInvites, refresh, sentInvites, session],
+    [changeInvitation, loading, pairing, profile, receivedInvites, refresh, sentInvites, session],
   )
 
   return <OnlineContext.Provider value={value}>{children}</OnlineContext.Provider>

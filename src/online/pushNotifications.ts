@@ -150,19 +150,23 @@ export async function getPushFailureCode(error: unknown): Promise<PushFailureCod
 }
 
 export async function requestPushDelivery(
-  request: { event: 'test'; endpoint: string } | { event: 'invited' | 'responded'; invitationId: string },
+  request: { event: 'test'; endpoint: string } | { event: 'invited' | 'responded' | 'cancelled' | 'rescheduled'; invitationId: string; revision?: number },
 ): Promise<PushDeliveryResult> {
   if (!supabase) {
     return { attempted: 0, accepted: 0, expired: 0, failed: 1, reason: 'function-error' }
   }
 
-  const { data, error } = await supabase.functions.invoke('notify-love-mail', { body: request })
-  if (error) {
-    const reason = await getPushFailureCode(error)
-    console.error(`Love-mail push function failed code=${reason}:`, error.message)
-    return { attempted: 0, accepted: 0, expired: 0, failed: 1, reason }
+  try {
+    const { data, error } = await supabase.functions.invoke('notify-love-mail', { body: request })
+    if (error) {
+      const reason = await getPushFailureCode(error)
+      console.error(`Love-mail push function failed code=${reason}:`, error.message)
+      return { attempted: 0, accepted: 0, expired: 0, failed: 1, reason }
+    }
+    return normalizeDeliveryResult(data)
+  } catch {
+    return { attempted: 0, accepted: 0, expired: 0, failed: 1, reason: 'function-error' }
   }
-  return normalizeDeliveryResult(data)
 }
 
 export function createTestPushRequest(subscription: Pick<PushSubscription, 'endpoint'>) {

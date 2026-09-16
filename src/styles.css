@@ -1523,3 +1523,24 @@ input:focus-visible {
   .intro-copy { width: auto; border-right: 0; }
   .intro-subcopy { opacity: 1; }
 }
+
+/* Invitation changes reuse the ticket's existing pixel controls. */
+.invitation-list-item { border-bottom: 2px dashed var(--pink, #e38cad); padding-bottom: 14px; }
+.invitation-list-item .invitation-row { border-bottom: 0; }
+.invitation-list-item > .invitation-actions { padding: 0 12px; }
+.invitation-actions { margin: 18px 0; }
+.invitation-actions:empty { display: none; }
+.invitation-edit-form { margin-top: 16px; }
+.invitation-edit-form fieldset { border: 0; padding: 0; margin: 0 0 16px; min-width: 0; }
+.invitation-edit-form legend { font-size: 1.35rem; margin-bottom: 12px; }
+.invitation-edit-form label { display: block; margin: 16px 0; }
+.invitation-edit-form textarea, .invitation-edit-form select { display: block; width: 100%; margin-top: 8px; padding: 10px; font: inherit; color: #702043; background: #fff9e9; border: 2px solid #ba3871; }
+.invitation-edit-form textarea { min-height: 90px; resize: vertical; }
+.invitation-edit-form .date-row { grid-template-columns: minmax(0, 1fr); }
+.invitation-edit-form .pixel-button { max-width: 100%; white-space: normal; }
+.reschedule-preview { margin: 16px 0; }
+.reschedule-preview p, .proposal-status { overflow-wrap: anywhere; }
+.invite-status--cancelled, .big-invite-status--cancelled { color: #8b4161; background: #fce4ed; }
+button:disabled { cursor: wait; opacity: .6; }
+.invitation-edit-form > .text-link { border: 0; background: transparent; padding: 6px 0; text-decoration: underline; cursor: pointer; }
+.invite-ticket-online:has(.invitation-edit-form .pixel-picker-popover) { z-index: 221; }
