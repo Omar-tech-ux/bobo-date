@@ -1552,3 +1552,17 @@ input:focus-visible {
 button:disabled { cursor: wait; opacity: .6; }
 .invitation-edit-form > .text-link { border: 0; background: transparent; padding: 6px 0; text-decoration: underline; cursor: pointer; }
 .invite-ticket-online:has(.invitation-edit-form .pixel-picker-popover) { z-index: 221; }
+
+/* Multiple adventures share one date ticket. */
+.activity-guidance { margin: 0 0 12px; color: #9f476e; }
+.activity-option .activity-check { margin-left: auto; flex-shrink: 0; width: 1.2em; text-align: center; }
+.activity-option:has(input:focus-visible) { outline: 3px solid var(--ink); outline-offset: 4px; }
+.ticket-activities { margin: 20px 0; padding: 0; list-style: none; }
+.ticket-activities li { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+.ticket-activities li + li { border-top: 1px solid #d98aaa; }
+.ticket-activities li > span { flex: 0 0 1.5em; font-size: 1.4rem; text-align: center; }
+.ticket-activities strong { min-width: 0; overflow-wrap: anywhere; line-height: 1.25; }
+.ticket-activities--compact { margin: 0 0 6px; }
+.ticket-activities--compact li { gap: 8px; padding: 5px 0; }
+.ticket-activities--compact li > span { font-size: 1.1rem; }
+.online-ticket-heading > div, .ticket-top > div { min-width: 0; }

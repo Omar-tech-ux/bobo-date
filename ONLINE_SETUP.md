@@ -130,6 +130,16 @@ On iPhone/iPad, install the site from Safari using **Share → Add to Home Scree
 
 Accounts and invitations are private under Row Level Security. The photos and video currently stored in `public/` are still public GitHub Pages assets. Moving that media to a private Supabase Storage bucket and removing it from public Git history is a separate migration.
 
+## Multiple activities
+
+Apply `20260916020000_multiple_activities.sql` before publishing the frontend.
+The migration backfills existing tickets and accepts legacy single-activity
+inserts. New clients send `activities`; the first item is mirrored to `activity`
+for older clients, which display only that first item until reloaded. Current
+clients display every selection. No Edge Function deployment is needed.
+Run `supabase/tests/multiple_activities.sql` against the linked database to check
+validation and preservation through invitation actions; its fixtures roll back.
+
 ## Canceling and rescheduling invitations
 
 Deploy `20260916010000_invitation_changes.sql`, then `notify-love-mail`, then

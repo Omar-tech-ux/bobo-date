@@ -1,7 +1,8 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { getPlanTimes } from "../dateTime";
 import { accountRoute, getSafeReturnRoute } from "../navigation";
-import { activities } from "../types";
+import { selectedActivities } from "../types";
+import { ActivityList, ActivityTicketHeading } from "../components/ActivityTicketHeading";
 import { NotificationSetup } from "./NotificationSetup";
 import { clearPendingInvitationBadge } from "./pushNotifications";
 import { getAppUrl, supabase } from "./supabase";
@@ -405,7 +406,8 @@ function InvitationRow({
   sent: boolean;
 }) {
   const { user } = useOnline();
-  const activity = activities.find((item) => item.id === invitation.activity);
+  const chosen = selectedActivities(invitation);
+  const activity = chosen[0];
   const preview = getPlanTimes({
     date: invitation.date,
     time: invitation.time,
@@ -416,15 +418,15 @@ function InvitationRow({
     <div className='invitation-list-item'>
     <a className='invitation-row' href={`#/invite/${invitation.id}`}>
       <span className='invitation-icon' aria-hidden='true'>
-        {activity?.icon ?? "♥"}
+        {chosen.length > 1 ? "♥" : activity?.icon ?? "♥"}
       </span>
-      <span className='invitation-main'>
-        <strong>{activity?.label ?? "Our date"}</strong>
+      <div className='invitation-main'>
+        {chosen.length > 1 ? <ActivityList value={invitation} compact /> : <strong>{activity?.label ?? "Our date"}</strong>}
         <span>
           {sent ? "You sent this" : "Your person invited you"} ·{" "}
           {preview?.guest ?? invitation.date}
         </span>
-      </span>
+      </div>
       <span className={`invite-status invite-status--${invitation.status}`}>
         {needsInvitationAnswer(invitation, user?.id) ? "your answer is next ♡" : statusCopy[invitation.status]}
       </span>
@@ -556,7 +558,6 @@ export function InvitationPage({
   }
 
   const incoming = invitation.recipient_id === user?.id;
-  const activity = activities.find((item) => item.id === invitation.activity);
   const times = getPlanTimes({
     date: invitation.date,
     time: invitation.time,
@@ -590,17 +591,9 @@ export function InvitationPage({
   return (
     <main className='online-screen invitation-screen'>
       <section className='invite-ticket-online'>
-        <div className='online-ticket-heading'>
-          <span aria-hidden='true'>{activity?.icon}</span>
-          <div>
-            <h1>{activity?.label}</h1>
-            <p>
-              {incoming
-                ? `${pairing.partner?.display_name ?? "Your person"} invited you`
-                : `sent to ${pairing.partner?.display_name ?? "your person"}`}
-            </p>
-          </div>
-        </div>
+        <ActivityTicketHeading value={invitation} className="online-ticket-heading" subtitle={incoming
+          ? `${pairing.partner?.display_name ?? "Your person"} invited you`
+          : `sent to ${pairing.partner?.display_name ?? "your person"}`} />
         <div className='online-ticket-times'>
           <div>
             <span>{invitation.last_action === "rescheduled" ? "Proposed time" : "Their chosen time"}</span>

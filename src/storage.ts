@@ -1,4 +1,4 @@
-import type { DatePlan } from './types'
+import { selectedActivities, type DatePlan } from './types'
 
 export const PLAN_STORAGE_KEY = 'bobo-date-plan-v1'
 export const STORY_PROGRESS_KEY = 'bobo-story-progress-v1'
@@ -16,7 +16,10 @@ const emptyStoryProgress: StoryProgress = {
 export function loadPlan(): DatePlan | null {
   try {
     const raw = window.localStorage.getItem(PLAN_STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as DatePlan) : null
+    if (!raw) return null
+    const value = JSON.parse(raw)
+    if (!value || typeof value !== 'object') return null
+    return { ...value, activities: selectedActivities(value).map((item) => item.id) } as DatePlan
   } catch {
     return null
   }

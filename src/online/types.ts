@@ -19,6 +19,7 @@ export type DateInvitation = {
   date: string
   time: string
   activity: ActivityId
+  activities?: ActivityId[]
   guest_timezone: string
   host_timezone: string
   status: InvitationStatus

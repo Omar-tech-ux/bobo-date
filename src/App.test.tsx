@@ -81,6 +81,46 @@ describe('proposal experience', () => {
 })
 
 describe('routing and persistence', () => {
+  it('toggles adventures independently and restores all selections after saving', async () => {
+    const user = userEvent.setup()
+    window.localStorage.setItem(PLAN_STORAGE_KEY, JSON.stringify({
+      date: '2099-07-15', time: '18:00', activity: 'movie-night',
+      guestTimeZone: 'Asia/Amman', hostTimeZone: 'Asia/Amman', createdAt: '2026-01-01',
+    }))
+    window.location.hash = '#/plan'
+    const view = render(<App />)
+    expect(screen.getByRole('checkbox', { name: 'Movie watch party' })).toBeChecked()
+    await user.click(screen.getByRole('checkbox', { name: 'Surprise me' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Video dinner' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Movie watch party' }))
+    expect(screen.getByRole('checkbox', { name: 'Movie watch party' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Surprise me' })).toBeChecked()
+    await user.click(screen.getByRole('button', { name: /lock in/i }))
+    expect(JSON.parse(window.localStorage.getItem(PLAN_STORAGE_KEY)!).activities).toEqual(['video-dinner', 'surprise'])
+    view.unmount()
+    window.location.hash = '#/plan'
+    render(<App />)
+    expect(screen.getByRole('checkbox', { name: 'Video dinner' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Surprise me' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Movie watch party' })).not.toBeChecked()
+    await user.click(screen.getByRole('checkbox', { name: 'Video dinner' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Surprise me' }))
+    await user.click(screen.getByRole('button', { name: /lock in/i }))
+    expect(screen.getByRole('alert')).toHaveTextContent(/tiny adventure/i)
+    expect(JSON.parse(window.localStorage.getItem(PLAN_STORAGE_KEY)!).activities).toEqual(['video-dinner', 'surprise'])
+  })
+
+  it('shows every selected adventure on the confirmation ticket in menu order', () => {
+    window.localStorage.setItem(PLAN_STORAGE_KEY, JSON.stringify({
+      date: '2099-07-15', time: '18:00', activities: ['surprise', 'movie-night', 'video-dinner'],
+      guestTimeZone: 'Asia/Amman', hostTimeZone: 'Asia/Amman', createdAt: '2026-01-01',
+    }))
+    window.location.hash = '#/confirmed'
+    render(<App />)
+    expect(screen.getByRole('heading', { name: 'Our little date' })).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Date activities' }).textContent).toBe('🍜Video dinner🎬Movie watch party🎁Surprise me')
+  })
+
   it('keeps the original theme control available across the app', () => {
     render(<App />)
     expect(screen.getByRole('button', { name: /start across the pink sky/i })).toBeInTheDocument()

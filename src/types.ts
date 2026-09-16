@@ -11,8 +11,14 @@ export type ActivityId = (typeof activities)[number]['id']
 export type DatePlan = {
   date: string
   time: string
-  activity: ActivityId
+  activities: ActivityId[]
   guestTimeZone: string
   hostTimeZone: 'Asia/Amman'
   createdAt: string
+}
+
+// Accept legacy tickets at the boundary; always render in menu order.
+export function selectedActivities(value: { activities?: unknown; activity?: unknown }) {
+  const ids = Array.isArray(value.activities) ? value.activities : [value.activity]
+  return activities.filter((item) => ids.includes(item.id))
 }

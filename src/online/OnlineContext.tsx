@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
-import { activities, type DatePlan } from '../types'
+import { selectedActivities, type DatePlan } from '../types'
 import { createPlannedDateTime, getPlanTimes, validatePlanTime } from '../dateTime'
 import { InvitationConflictError, needsInvitationAnswer } from './types'
 import {
@@ -156,7 +156,7 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
           void refresh()
           const invite = payload.new as DateInvitation | undefined
           if (!invite || invite.recipient_id !== userId || payload.eventType !== 'INSERT') return
-          const activity = activities.find((item) => item.id === invite.activity)
+          const activityLabel = selectedActivities(invite).map((item) => item.label).join(" + ")
           const preview = getPlanTimes({
             date: invite.date,
             time: invite.time,
@@ -164,7 +164,7 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
           })
           void showLiveInvitationNotification(
             'A tiny date invitation arrived ♡',
-            `${activity?.label ?? 'A date'} · ${preview?.guest ?? invite.date}`,
+            `${activityLabel || 'A date'} · ${preview?.guest ?? invite.date}`,
             invite.id,
           )
         },
@@ -246,7 +246,8 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
             recipient_id: pairing.partner.id,
             date: plan.date,
             time: plan.time,
-            activity: plan.activity,
+            activities: plan.activities,
+            activity: plan.activities[0],
             guest_timezone: plan.guestTimeZone,
             host_timezone: plan.hostTimeZone,
           })

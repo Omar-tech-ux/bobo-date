@@ -76,3 +76,23 @@ it('rejects invalid rescheduling before touching the database or notifying', asy
   expect(mocks.rpc).not.toHaveBeenCalledWith('change_date_invitation', expect.anything())
   expect(mocks.push).not.toHaveBeenCalled()
 })
+
+it('sends every activity with a legacy first activity and reloads the complete ticket', async () => {
+  const multi = { ...ticket, activity: 'video-dinner', activities: ['video-dinner', 'surprise'] }
+  const insert = vi.fn(() => ({ select: () => ({ single: async () => ({ data: multi }) }) }))
+  mocks.from.mockImplementation((table: string) => ({ insert, select: () => ({
+    eq: () => ({ maybeSingle: async () => ({ data: { id: 'sender' } }) }),
+    order: async () => ({ data: table === 'date_invitations' ? [multi] : [] }),
+  }) }))
+  mocks.rpc.mockResolvedValue({ data: { couple_id: 'pair', partner_id: 'recipient', partner_display_name: 'Partner' } })
+  await ready()
+  await act(async () => {
+    const result = await current.sendInvitation({
+      activities: ['video-dinner', 'surprise'], date: '2099-01-01', time: '12:00',
+      guestTimeZone: 'Asia/Amman', hostTimeZone: 'Asia/Amman', createdAt: '2026-01-01',
+    })
+    expect(result.invitation.activities).toEqual(['video-dinner', 'surprise'])
+  })
+  expect(insert).toHaveBeenCalledWith(expect.objectContaining({ activity: 'video-dinner', activities: ['video-dinner', 'surprise'] }))
+  expect(current.sentInvites[0].activities).toEqual(['video-dinner', 'surprise'])
+})

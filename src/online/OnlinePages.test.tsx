@@ -51,4 +51,17 @@ describe('invitation details', () => {
     expect(screen.getByText('Their chosen time').nextElementSibling).toHaveTextContent('6:30 PM')
     expect(screen.getByText('Amman time').nextElementSibling).toHaveTextContent('2:30 AM')
   })
+
+  it.each(['sender-id', 'recipient-id'])('shows every activity for %s', (userId) => {
+    const state = mockedUseOnline()
+    const invitation = { ...state.receivedInvites[0], activities: ['video-dinner', 'movie-night', 'surprise'] as const }
+    mockedUseOnline.mockReturnValue({ ...state, user: { id: userId },
+      receivedInvites: userId === 'recipient-id' ? [invitation] : [],
+      sentInvites: userId === 'sender-id' ? [invitation] : [],
+    } as unknown as ReturnType<typeof useOnline>)
+    render(<InvitationPage invitationId='invitation-id' />)
+    expect(screen.getByRole('heading', { name: 'Our little date' })).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Date activities' }).children).toHaveLength(3)
+    expect(screen.getByText('Surprise me')).toBeInTheDocument()
+  })
 })

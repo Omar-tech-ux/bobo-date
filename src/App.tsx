@@ -1,3 +1,4 @@
+import { ActivityTicketHeading } from "./components/ActivityTicketHeading";
 import { needsInvitationAnswer } from './online/types';
 import {
   type CSSProperties,
@@ -380,8 +381,8 @@ export function PlannerPage() {
   const detectedZone = previous?.guestTimeZone ?? detectTimeZone();
   const [date, setDate] = useState(previous?.date ?? "");
   const [time, setTime] = useState(previous?.time ?? "");
-  const [activity, setActivity] = useState<ActivityId | "">(
-    previous?.activity ?? "",
+  const [selected, setSelected] = useState<ActivityId[]>(
+    previous?.activities ?? [],
   );
   const [guestTimeZone, setGuestTimeZone] = useState(detectedZone);
   const [error, setError] = useState("");
@@ -400,7 +401,7 @@ export function PlannerPage() {
     event.preventDefault();
     setValidationAttempt((attempt) => attempt + 1);
 
-    if (!date && !time && !activity) {
+    if (!date && !time && !selected.length) {
       setError(
         "Bobo… you left the whole date in mystery mode 😭 Pick a day, a time, and one tiny adventure for us ♡",
       );
@@ -424,7 +425,7 @@ export function PlannerPage() {
       setErrorField("time");
       return;
     }
-    if (!activity) {
+    if (!selected.length) {
       setError("Pick our tiny adventure—my popcorn is getting nervous 🍿💗");
       setErrorField("activity");
       return;
@@ -444,7 +445,7 @@ export function PlannerPage() {
     const plan: DatePlan = {
       date,
       time,
-      activity,
+      activities: activities.filter((item) => selected.includes(item.id)).map((item) => item.id),
       guestTimeZone,
       hostTimeZone: HOST_TIME_ZONE,
       createdAt: new Date().toISOString(),
@@ -556,22 +557,26 @@ export function PlannerPage() {
             aria-describedby={error ? "planner-error" : undefined}
           >
             <legend>What should we do?</legend>
+            <p className="activity-guidance">Choose one or more</p>
             <div className='activity-grid'>
               {activities.map((item) => (
                 <label className='activity-option' data-sound='select' key={item.id}>
                   <input
-                    type='radio'
+                    type='checkbox'
                     name='activity'
                     value={item.id}
-                    checked={activity === item.id}
+                    checked={selected.includes(item.id)}
                     onChange={() => {
-                      setActivity(item.id);
+                      setSelected((current) => current.includes(item.id)
+                        ? current.filter((id) => id !== item.id)
+                        : [...current, item.id]);
                       setError("");
                       setErrorField(null);
                     }}
                   />
                   <span aria-hidden='true'>{item.icon}</span>
                   {item.label}
+                  <span className="activity-check" aria-hidden="true">{selected.includes(item.id) ? "✓" : ""}</span>
                 </label>
               ))}
             </div>
@@ -673,7 +678,6 @@ function ConfirmationPage() {
     );
   }
 
-  const chosenActivity = activities.find((item) => item.id === plan.activity);
   const times = getPlanTimes(plan);
 
   return (
@@ -682,13 +686,7 @@ function ConfirmationPage() {
       <section className='confirmation-wrap'>
         <p className='yay-copy'>IT’S A DATE!</p>
         <article className='date-ticket'>
-          <div className='ticket-top'>
-            <span>{chosenActivity?.icon}</span>
-            <div>
-              <h1>{chosenActivity?.label}</h1>
-              <p>admit two very cute people</p>
-            </div>
-          </div>
+          <ActivityTicketHeading value={plan} className="ticket-top" subtitle="admit two very cute people" />
           <div className='ticket-times'>
             <div>
               <span>Bobo’s time</span>
