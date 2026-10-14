@@ -242,3 +242,99 @@ Both partners can cancel or propose a future time on active tickets. Cancellatio
 is final, and rescheduling resets acceptance. Notification failures leave the
 saved ticket intact and show a warning. Phone delivery still depends on each
 partner's existing notification permission and subscription.
+
+## Private foreground location sharing
+
+Apply `20261015010000_private_locations.sql` before publishing the location UI:
+
+```sh
+npx supabase db push --linked
+npx supabase db query --linked --file supabase/tests/private_locations.sql
+npm test
+npm run build
+```
+
+The new migration uses the existing `pg_cron` extension from the anniversary
+reminder migration. It creates no Edge Function, map subscription, secret, or
+environment variable. React continues to use only the public Supabase
+publishable key; never put a service-role key in a `VITE_` variable.
+
+Location access is restricted to one frozen pair and its two account UUIDs.
+At migration time, the allowlist is seeded only if exactly one sealed couple
+exists and it has exactly two members. An empty or ambiguous database remains
+disabled. New pairs are never automatically authorized. Both allowlist and
+location tables have RLS enabled and no direct anonymous or authenticated table
+access; only the four authenticated RPCs can access them, after checking the
+frozen identities and exact current membership. Removing either allowed member
+cascades the allowlist and both latest-location rows. Restoring membership
+does not automatically enable the feature again.
+
+Check setup from the Supabase SQL Editor as an administrator:
+
+```sql
+select a.couple_id, p.username as first_account, q.username as second_account
+from public.location_access a
+join public.profiles p on p.id = a.first_user_id
+join public.profiles q on q.id = a.second_user_id;
+
+select jobname, schedule, active from cron.job
+where jobname = 'clear-expired-locations';
+```
+
+Expect exactly the intended two accounts and one active `*/15 * * * *` job.
+If no allowlist exists, first identify the intended pair privately using
+`public.couples`, `public.couple_members`, and `public.profiles`. Then fill in
+all three UUIDs in this administrator-only query. It fails closed when the
+specified accounts do not exactly match the sealed pair; it never replaces an
+existing allowlist. Do not expose this setup capability in the frontend.
+
+```sql
+with intended as (
+  select 'REPLACE_WITH_COUPLE_UUID'::uuid as couple_id,
+    least('REPLACE_WITH_FIRST_ACCOUNT_UUID'::uuid, 'REPLACE_WITH_SECOND_ACCOUNT_UUID'::uuid) as first_user_id,
+    greatest('REPLACE_WITH_FIRST_ACCOUNT_UUID'::uuid, 'REPLACE_WITH_SECOND_ACCOUNT_UUID'::uuid) as second_user_id
+)
+insert into public.location_access(couple_id, first_user_id, second_user_id)
+select i.couple_id, i.first_user_id, i.second_user_id
+from intended i join public.couples c on c.id = i.couple_id
+where c.sealed and i.first_user_id <> i.second_user_id
+  and (select array_agg(m.user_id order by m.user_id) from public.couple_members m
+    where m.couple_id = i.couple_id) = array[i.first_user_id, i.second_user_id];
+```
+
+Each account opts in independently. Only the latest accepted position is stored;
+there is no location history. The server enforces a 60-second minimum between
+accepted writes per account across all devices. Stopping sharing immediately
+clears its coordinates and advances a revision, invalidating delayed uploads
+and queued enable requests. Re-enabling requires the current revision and an
+explicit user action. A successful Stop is account-wide; an offline Stop ends
+collection on that device immediately but cannot promise server deletion until
+the request succeeds. Location errors must never silently turn sharing back on.
+
+The app requests a low-power location only while visible, approximately every
+two minutes, slowing to five minutes after two stationary readings. It accepts
+cached fixes up to 60 seconds old and limits acquisition to ten seconds (the
+browser excludes permission-prompt time). It sends a new position on the first
+reading, meaningful movement, a ten-minute heartbeat, or a manual update,
+subject to the server minimum. Hidden pages stop scheduling immediately and
+ignore late callbacks. This is foreground PWA functionality: iOS suspension
+cannot reliably collect or update GPS. An iOS Home Screen icon opens the app;
+the location card is inside the app, not a native Home Screen widget.
+
+Coordinates expire 24 hours after the observation time. The read RPC hides
+expired coordinates immediately, even if cleanup is delayed. The SQL Cron job
+clears expired coordinate fields every 15 minutes; no phone wake-up is involved.
+This does not imply immediate removal from provider backups. Cleanup retains
+only sharing preferences, revision, and the last accepted-write timestamp.
+Coordinates are never persisted to browser storage, the service-worker cache,
+push messages, or logs. Maps load only after the user opens the map view; map
+tile providers can observe the requested map area, so they must not receive
+account identifiers or location records.
+
+The SQL test file creates synthetic users and a temporary allowlist inside one
+rollback-only transaction. It checks access restrictions, invalid observations,
+throttling, revision/Stop ordering, expiry before cleanup, exact membership, and
+cascading removal without reading real coordinates. It briefly locks the
+allowlist while running and restores it on rollback. Run it before deployment;
+frontend unit tests do not substitute for these database checks. Monitor the
+cleanup job's status in `cron.job_run_details` without logging coordinates.

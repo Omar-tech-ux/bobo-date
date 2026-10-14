@@ -31,6 +31,8 @@ import {
   PixelTimePicker,
 } from "./components/PixelDateTimePickers";
 import { ThemeMusic } from "./components/ThemeMusic";
+import { LocationSession } from './location/LocationContext';
+import { LocationCard } from './location/LocationCard';
 import { AnniversarySession } from './anniversary/AnniversaryContext';
 import { AnniversaryPrompt } from './anniversary/AnniversaryPrompt';
 import { AnniversariesPage, AnniversaryDetailPage } from './anniversary/AnniversaryPages';
@@ -79,7 +81,7 @@ function useHashRoute() {
 export function App() {
   return (
     <OnlineProvider>
-      <AnniversarySession><AppRoutes /></AnniversarySession>
+      <AnniversarySession><LocationSession><AppRoutes /></LocationSession></AnniversarySession>
     </OnlineProvider>
   );
 }
@@ -96,7 +98,7 @@ function AppRoutes() {
   if (route === "/terms") page = <TermsPage />;
   if (route === "/plan") page = <PlannerPage />;
   if (route === "/confirmed") page = <ConfirmationPage />;
-  if (route === "/memories") page = <MemoriesPage />;
+  if (route === "/memories") page = <MemoriesPage locationCard={<LocationCard />} />;
   if (route === "/scrapbook") page = <ScrapbookPage />;
   if (route === "/world") page = storyUnlocked ? <WorldPage /> : <MemoriesPage />;
   if (route === "/cinema") page = storyUnlocked ? <CinemaPage /> : <MemoriesPage />;

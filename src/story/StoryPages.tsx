@@ -1,5 +1,6 @@
 import {
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
   useEffect,
   useMemo,
   useRef,
@@ -151,7 +152,7 @@ function StoryNavigation({ light = false }: { light?: boolean }) {
   )
 }
 
-export function MemoriesPage() {
+export function MemoriesPage({ locationCard }: { locationCard?: ReactNode }) {
   const unlocked = loadStoryProgress().scrapbookCompleted
 
   return (
@@ -163,6 +164,7 @@ export function MemoriesPage() {
         <p>{unlocked ? 'Every little place is waiting for us.' : 'Our scrapbook knows the way. Finish it once to open the whole world.'}</p>
       </header>
 
+      {locationCard}
       <section className='memory-destination-map' aria-label='Choose a place in our little world'>
         <div className='destination-path' aria-hidden='true'><i /><i /><i /></div>
         {storyDestinations.map((destination, index) => {

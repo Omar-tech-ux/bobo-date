@@ -1,0 +1,61 @@
+.location-card {
+  position: relative;
+  width: min(820px, 100%);
+  margin: 0 auto 28px;
+  padding: 24px;
+  border: 4px solid var(--pink-dark);
+  color: var(--ink);
+  background: var(--cream);
+  box-shadow: 5px 5px 0 #bd3972;
+  text-align: left;
+  scroll-margin-top: 24px;
+}
+
+.location-card-heading h2 { margin: 0; font-size: 1.8rem; line-height: 1.1; }
+.location-card-heading h2 span { color: var(--pink); }
+.location-card-heading p { margin: 8px 0 20px; line-height: 1.4; }
+.location-people { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; }
+.location-person { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 12px; padding: 16px 0 16px 20px; border-top: 2px dashed #dc8fab; border-bottom: 2px dashed #dc8fab; }
+.location-person:first-child { padding-left: 0; padding-right: 20px; border-right: 2px dashed #dc8fab; }
+.location-person-heart { color: #536e49; font-size: 1.5rem; line-height: 1; }
+.location-person--you .location-person-heart { color: var(--pink-dark); }
+.location-person h3 { margin: 0 0 8px; font-size: 1.1rem; overflow-wrap: anywhere; }
+.location-person p { margin: 4px 0 0; font-size: .9rem; line-height: 1.4; }
+.location-person-time { color: var(--ink); }
+.location-coordinates { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.location-accuracy { color: #854260; }
+.location-stale { color: #81502d; }
+.location-distance { margin: 18px 0; font-size: 1.15rem; line-height: 1.4; }
+.location-distance > span:first-child { margin-right: 8px; color: var(--pink-dark); white-space: nowrap; }
+.location-distance-note { display: block; margin-top: 4px; color: #854260; font-size: .85rem; }
+.location-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; margin-top: 20px; }
+.location-button { min-height: 44px; padding: 10px 14px; font-size: .88rem; line-height: 1.3; }
+.location-button:disabled { opacity: .6; cursor: default; }
+.location-text-button { min-height: 44px; padding: 8px 0; border: 0; color: var(--pink-dark); background: none; font: inherit; text-align: left; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+.location-card button:focus-visible,
+.location-card a:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.location-sharing-note,
+.location-map-privacy { margin: 12px 0 0; max-width: 64ch; color: #854260; font-size: .88rem; line-height: 1.5; }
+.location-notice { margin: 14px 0 0; padding: 10px 12px; border-left: 3px solid var(--pink-dark); background: #ffe6ee; line-height: 1.4; }
+.location-map-section { margin-top: 12px; }
+.location-map-privacy { margin-top: 0; }
+.location-map-canvas { width: 100%; height: 280px; margin-top: 8px; border: 3px solid var(--pink-dark); background: #f6ecd8; font: inherit; z-index: 0; }
+.location-map-canvas .leaflet-control-attribution { font: 11px/1.5 sans-serif; color: #3e2935; background: #fff9e9; }
+.location-map-canvas .leaflet-control-attribution a { color: #672046; }
+.location-map-canvas .leaflet-control-zoom a { width: 44px; height: 44px; line-height: 44px; color: var(--ink); background: var(--cream); }
+.location-map-canvas .leaflet-bar { border: 2px solid var(--pink-dark); border-radius: 0; box-shadow: none; }
+.location-map-canvas .leaflet-bar a:first-child,
+.location-map-canvas .leaflet-bar a:last-child { border-radius: 0; }
+.location-map-canvas .location-map-label { width: max-content; max-width: 140px; padding: 4px 7px; border: 2px solid var(--ink); border-radius: 0; color: var(--ink); background: var(--cream); box-shadow: none; font: .85rem/1.2 'Pixelify Sans', monospace; white-space: normal; overflow-wrap: anywhere; }
+.location-map-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 16px; color: #854260; font-size: .85rem; }
+.location-map-message { margin: 12px 0; line-height: 1.4; }
+.location-card--compact { margin-top: 24px; padding: 18px; border-width: 3px; box-shadow: none; }
+
+@media (max-width: 540px) {
+  .location-card { padding: 18px 16px; }
+  .location-card-heading h2 { font-size: 1.6rem; }
+  .location-people { grid-template-columns: 1fr; }
+  .location-person { padding: 14px 0; border-top: 0; }
+  .location-person:first-child { padding: 14px 0; border-top: 2px dashed #dc8fab; border-right: 0; }
+  .location-map-canvas { height: 250px; }
+}
