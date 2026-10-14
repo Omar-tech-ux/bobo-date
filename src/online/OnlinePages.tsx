@@ -473,6 +473,7 @@ export function InboxPage() {
               </a>
             </div>
             <NotificationSetup userId={user!.id} compact />
+            <a href='#/anniversaries' className='mailbox-home-link'>♡ Our anniversaries →</a>
             <section className='invite-list'>
               <h2>For you</h2>
               {receivedInvites.length ? (

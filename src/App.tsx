@@ -3,6 +3,7 @@ import { needsInvitationAnswer } from './online/types';
 import {
   type CSSProperties,
   type FormEvent,
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -30,6 +31,9 @@ import {
   PixelTimePicker,
 } from "./components/PixelDateTimePickers";
 import { ThemeMusic } from "./components/ThemeMusic";
+import { AnniversarySession } from './anniversary/AnniversaryContext';
+import { AnniversaryPrompt } from './anniversary/AnniversaryPrompt';
+import { AnniversariesPage, AnniversaryDetailPage } from './anniversary/AnniversaryPages';
 import { OnlineProvider, useOnline } from "./online/OnlineContext";
 import {
   AccountPage,
@@ -75,7 +79,7 @@ function useHashRoute() {
 export function App() {
   return (
     <OnlineProvider>
-      <AppRoutes />
+      <AnniversarySession><AppRoutes /></AnniversarySession>
     </OnlineProvider>
   );
 }
@@ -85,8 +89,10 @@ function AppRoutes() {
   const route = location.path;
   const { configured, loading, user } = useOnline();
   const storyUnlocked = loadStoryProgress().scrapbookCompleted;
+  const [introFinished, setIntroFinished] = useState(false);
+  const finishIntro = useCallback(() => setIntroFinished(true), []);
 
-  let page = <ProposalPage signedIn={Boolean(user)} />;
+  let page = <ProposalPage signedIn={Boolean(user)} onIntroFinished={finishIntro} />;
   if (route === "/terms") page = <TermsPage />;
   if (route === "/plan") page = <PlannerPage />;
   if (route === "/confirmed") page = <ConfirmationPage />;
@@ -98,6 +104,9 @@ function AppRoutes() {
   if (route === "/account") page = <AccountPage />;
   if (route === "/pair") page = <PairingPage />;
   if (route === "/inbox") page = <InboxPage />;
+  if (route === '/anniversaries') page = <AnniversariesPage />;
+  const anniversaryMatch = route.match(/^\/anniversaries\/([^/]+)$/);
+  if (anniversaryMatch) page = <AnniversaryDetailPage month={anniversaryMatch[1]} />;
   const invitationMatch = route.match(/^\/invite\/([^/]+)$/);
   if (invitationMatch) {
     page = (
@@ -118,6 +127,7 @@ function AppRoutes() {
     <ThemeMusic route={route} />
     {showMailboxShortcut && <LoveMailboxLink />}
     {page}
+    <AnniversaryPrompt ready={route !== '/' || introFinished} />
   </>;
 }
 
@@ -242,10 +252,14 @@ function Intro({ onFinish }: { onFinish: () => void }) {
   );
 }
 
-export function ProposalPage({ signedIn = false }: { signedIn?: boolean }) {
+export function ProposalPage({ signedIn = false, onIntroFinished }: { signedIn?: boolean; onIntroFinished?: () => void }) {
   const [showIntro, setShowIntro] = useState(true);
   const [noCount, setNoCount] = useState(0);
   const [celebrating, setCelebrating] = useState(false);
+  const finishIntro = useCallback(() => {
+    setShowIntro(false);
+    onIntroFinished?.();
+  }, [onIntroFinished]);
 
   const sayYes = () => {
     setCelebrating(true);
@@ -255,7 +269,7 @@ export function ProposalPage({ signedIn = false }: { signedIn?: boolean }) {
     );
   };
 
-  if (showIntro) return <Intro onFinish={() => setShowIntro(false)} />;
+  if (showIntro) return <Intro onFinish={finishIntro} />;
 
   const yesWidth = Math.min(148 + noCount * 42, 400);
   const yesHeight = Math.min(52 + noCount * 8, 104);

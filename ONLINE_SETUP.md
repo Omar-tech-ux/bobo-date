@@ -130,6 +130,82 @@ On iPhone/iPad, install the site from Safari using **Share → Add to Home Scree
 
 Accounts and invitations are private under Row Level Security. The photos and video currently stored in `public/` are still public GitHub Pages assets. Moving that media to a private Supabase Storage bucket and removing it from public Git history is a separate migration.
 
+## Monthly anniversary photo albums
+
+Apply `20261014010000_anniversary_photos.sql` **before** publishing this frontend:
+
+```sh
+npx supabase db push --linked
+npx supabase db query --linked --file supabase/tests/anniversary_photos.sql
+npm test
+npm run build
+```
+
+The migration provisions the private `anniversary-photos` bucket, contribution
+and photo tables, and authenticated RPCs and Storage policies. It needs no new
+environment variables, Edge Function, Cron job, or notification permission.
+The database checks use temporary fixture users and Storage metadata inside a
+rollback-only transaction; they do not upload physical files or change real
+albums. They also fix the eligibility clock inside that transaction so the
+checks work before the first anniversary opens.
+
+Albums begin with October 14, 2026. Each month unlocks at midnight on the 15th
+in `Asia/Amman`. The newest due month is prompted once per fresh app load after
+sign-in/pairing and the intro. “Later” lasts only for that app session. Returning
+from another app or a photo picker refreshes visible data without reopening a
+dismissed prompt. Earlier gaps remain accessible from the anniversary list.
+
+Each partner has up to three photos and a separate completion timestamp.
+Saving one photo stops that person's reminder on every device. Removing their
+last photo clears completion; it restores the next-load reminder only when
+that month is the newest due month. Both partners can view saved images; each
+can edit only their own contribution. The existing day-14 push reminders are
+independent of photo uploads.
+
+JPEG, PNG, and WebP files up to 20 MiB are accepted locally. The browser applies
+image orientation and resizes proportionally to a maximum 2560-pixel edge before
+JPEG encoding. Uploads are processed sequentially and capped at 5 MiB per file
+by both client and bucket. HEIC must be exported as JPEG. Viewing uses private,
+15-minute signed URLs refreshed while an album is open. Photos are not added
+to the service-worker cache or persisted in browser storage by the app.
+
+The revision-checked `save_anniversary_photos` RPC validates membership, date,
+file ownership/existence, dimensions, and the three-photo limit, then commits
+the complete selection and completion timestamp atomically. An interrupted
+save rechecks the server before allowing a retry. Replacement objects have new
+paths; old photos remain saved until the replacement transaction commits.
+
+Removed and abandoned files are reclaimed through the Storage API in batches
+of at most 20 on subsequent authenticated online launches and after saves.
+Only the uploader's unreferenced objects older than 24 hours qualify; newly
+attached objects must be under one hour old, while existing saved photos may
+be retained indefinitely. These nonoverlapping windows prevent cleanup/save
+races. Cleanup errors retry on later launches, so physical removal is eventual
+and depends on the uploader using the app again. Never delete Storage metadata
+directly with SQL. Monitor bucket size and Storage request errors in Supabase
+if cleanup or uploads fail repeatedly.
+
+Useful post-deployment checks (no photo contents or account identifiers):
+
+```sql
+select id, public, file_size_limit, allowed_mime_types
+from storage.buckets where id = 'anniversary-photos';
+
+select tablename, policyname, cmd
+from pg_policies
+where tablename in ('anniversary_contributions', 'anniversary_photos')
+   or (schemaname = 'storage' and (
+     policyname like '%anniversary%'
+     or policyname = 'read own uploads or paired saved photos'
+   ));
+```
+
+Expect a private bucket with a 5 MiB JPEG limit and member-only reads, with
+writes restricted to the owning contributor. Deploy the frontend through the
+existing GitHub Pages workflow after these checks pass. The migration is
+additive and compatible with the previous frontend; to roll the frontend back,
+preserve the private bucket and tables so saved photos are not lost.
+
 ## Multiple activities
 
 Apply `20260916020000_multiple_activities.sql` before publishing the frontend.

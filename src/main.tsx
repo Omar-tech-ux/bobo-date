@@ -4,6 +4,7 @@ import '@fontsource/pixelify-sans/400.css'
 import '@fontsource/pixelify-sans/600.css'
 import './styles.css'
 import './story/story.css'
+import './anniversary/anniversary.css'
 import { App } from './App'
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

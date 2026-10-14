@@ -4,6 +4,7 @@ const SAFE_RETURN_ROUTES = new Set([
   '/world',
   '/cinema',
   '/gallery-room',
+  '/anniversaries',
 ])
 
 export type HashLocation = {
@@ -24,16 +25,16 @@ export function navigate(route: string) {
 }
 
 export function accountRoute(next?: string) {
-  return next && SAFE_RETURN_ROUTES.has(next)
+  return next && isStoryRoute(next)
     ? `/account?next=${encodeURIComponent(next)}`
     : '/account'
 }
 
 export function getSafeReturnRoute(fallback = '/inbox') {
   const next = readHashLocation().search.get('next')
-  return next && SAFE_RETURN_ROUTES.has(next) ? next : fallback
+  return next && isStoryRoute(next) ? next : fallback
 }
 
 export function isStoryRoute(path: string) {
-  return SAFE_RETURN_ROUTES.has(path)
+  return SAFE_RETURN_ROUTES.has(path) || /^\/anniversaries\/\d{4}-(0[1-9]|1[0-2])$/.test(path)
 }

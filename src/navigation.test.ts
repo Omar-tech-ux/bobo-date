@@ -15,4 +15,12 @@ describe('hash navigation helpers', () => {
     window.location.hash = '#/account?next=https%3A%2F%2Fexample.com'
     expect(getSafeReturnRoute()).toBe('/inbox')
   })
+
+  it('preserves anniversary sign-in destinations without accepting malformed routes', () => {
+    expect(accountRoute('/anniversaries')).toBe('/account?next=%2Fanniversaries')
+    expect(accountRoute('/anniversaries/2026-10')).toBe('/account?next=%2Fanniversaries%2F2026-10')
+    for (const path of ['/anniversaries/2026-13', '/anniversaries/2026-10/extra', '//example.com']) expect(accountRoute(path)).toBe('/account')
+    window.location.hash = '#/account?next=%2Fanniversaries%2F2026-10'
+    expect(getSafeReturnRoute()).toBe('/anniversaries/2026-10')
+  })
 })

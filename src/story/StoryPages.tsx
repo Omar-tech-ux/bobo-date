@@ -91,7 +91,7 @@ function MemorySheet({ page, index }: { page: MemoryPage; index: number }) {
 }
 
 export type StoryDestination = {
-  id: 'scrapbook' | 'world' | 'cinema' | 'gallery'
+  id: 'scrapbook' | 'world' | 'cinema' | 'gallery' | 'anniversaries'
   route: string
   title: string
   description: string
@@ -100,6 +100,14 @@ export type StoryDestination = {
 }
 
 const storyDestinations: StoryDestination[] = [
+  {
+    id: 'anniversaries',
+    route: '/anniversaries',
+    title: 'Our anniversaries',
+    description: 'A few photos from every month of us, kept here together.',
+    icon: '♡',
+    requiresScrapbook: false,
+  },
   {
     id: 'scrapbook',
     route: '/scrapbook',
